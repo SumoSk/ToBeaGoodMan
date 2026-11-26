@@ -22,7 +22,7 @@ const items={phone:{name:"โทรศัพท์ดีๆ",cost:6000,delta:{co
 function spend(key,st,s,age){const x=items[key];if(!x||age<15||(["car","house"].includes(key)&&age<20)||st.inventory[key]||key==="car"&&st.car||key==="house"&&st.house&&!["เช่า","อยู่กับครอบครัว"].includes(st.house)||s.stats.m<x.cost)return null;return {key:"buy_"+key,title:"ซื้อ"+x.name,label:"ซื้อ"+x.name,result:"คุณได้"+x.name+" และใช้เงินตามราคาในเกม",delta:{...x.delta,m:-x.cost,assets:x.cost},patch:{buy:key}}}
 function limit(age){return age<15?2:4}
 function used(st,age){return st.freeYear===age?st.freeUsed:0}
-function valid(st,s,age,a){return age>=5&&age<100&&used(st,age)<limit(age)&&a&&!(st.freeYear===age&&st.freeKeys[a.key])&&s.stats.m>=Math.max(0,-(a.delta.m||0))}
+function valid(st,s,age,a){return age>=5&&age<100&&used(st,age)<limit(age)&&a&&!(st.freeYear===age&&st.freeKeys[a.key])&&((a.delta.m||0)>=0||s.stats.m>=-a.delta.m)}
 function activities(st,s,age){const actions=[
 {key:"study",title:"อ่านหนังสือ/ฝึกคิด",result:"คุณได้พัฒนาความรู้จากเวลาว่าง",delta:{knowledge:3,problem:2}},
 {key:"practice",title:"ฝึกทักษะ/งานอดิเรก",result:"คุณได้ฝึกฝนสิ่งที่สนใจ",delta:{skill:3,creative:2}},
@@ -40,7 +40,7 @@ if(type==="deceive"&&age>=20&&!blocked)a={...common,title:"หลอกเอา
 if(type==="reconnect"&&blocked)a={...common,title:"ลองขอเริ่มติดต่อใหม่กับ "+name,result:"คุณเลือกเปิดช่องทางใหม่ แต่อีกฝ่ายยังมีสิทธิไม่ตอบรับ",delta:{c:1,patience:2},patch:{contact:name,kind:"reconnect"}};
 return valid(st,s,age,a)?a:null}
 function replay(st,item){if(!item.free)return;const a=item.free,age=item.age;if(a.kind==="income")return;if(st.freeYear!==age){st.freeYear=age;st.freeUsed=0;st.freeKeys={}}st.freeUsed++;st.freeKeys[a.key]=true;const p=a.patch||{};if(p.buy){st.inventory[p.buy]=true;if(p.buy==="car")st.car="รถยนต์";if(p.buy==="house")st.house="บ้านของตัวเอง";}
-if(p.contact&&st.people[p.contact]){const old=st.people[p.contact];if(p.kind==="reconnect")st.people[p.contact]={...old,feeling:"เฉยๆ",boundary:"ยังไม่สนิท"};if(p.kind==="argue"||p.kind==="deceive"){st.people[p.contact]={...old,feeling:"เว้นระยะ",boundary:"ไม่ติดต่อ"};if(p.kind==="deceive"){st.contactIssue="ค้าง";st.contactPerson=p.contact}}}}
+if(p.contact&&st.people[p.contact]){const old=st.people[p.contact];if(p.kind==="reconnect")st.people[p.contact]={...old,feeling:"เฉยๆ",boundary:"รู้จักห่างๆ"};if(p.kind==="argue"||p.kind==="deceive"){st.people[p.contact]={...old,feeling:"เว้นระยะ",boundary:"ไม่ติดต่อ"};if(p.kind==="deceive"){st.contactIssue="ค้าง";st.contactPerson=p.contact}}}}
 function after(st,e,n,item){if(e.freedom==="focus")st.focusYear=e.age;if(e.freedom==="consequence"&&n!==2){st.contactIssue="";st.contactPerson=""}}
 for(let age=20;age<=99;age++)window.STORY.push({id:"free_consequence_"+age,age,order:82,title:"ความจริงที่ย้อนกลับมา",story:"คนที่เคยเสียเงินจากการหลอกลวงขอให้คุณรับผิดชอบเรื่องเดิม",custom:true,freedom:"consequence",choices:[c("ยอมรับและคืนเงินตามที่ทำได้","คุณรับผิดชอบผลของการกระทำ แม้ความไว้วางใจไม่กลับมาทันที",{m:-1500,i:4,reliable:2}),c("ขอคนกลางช่วยตกลงคืนเงิน","คุณเริ่มจัดการข้อพิพาทโดยไม่รับประกันว่าจะได้มิตรภาพคืน",{m:-1500,responsibility:3}),c("เลี่ยงการรับผิดชอบต่อ","เรื่องยังค้างและความน่าเชื่อถือลดลง",{i:-4,reliable:-4,stress:4}),c("ยอมรับความเสียหายและเข้าสู่กระบวนการตามกติกา","คุณต้องรับผลจากการกระทำ",{m:-2000,career:-3,responsibility:2})]});
 function gate(e,st){return e.freedom==="consequence"?st.contactIssue==="ค้าง":allowed(e,st)}
