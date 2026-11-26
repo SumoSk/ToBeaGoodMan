@@ -1,9 +1,9 @@
 window.CAREER_WORLD=(()=>{
 const catalog=window.CAREER_CATALOG, by=Object.fromEntries(catalog.map(x=>[x.id,x]));
-const groups=["สุขภาพ","เทคโนโลยี","ฝีมือ","สร้างสรรค์","ยุติธรรม"];
+const groups=["สุขภาพ","เทคโนโลยี","ฝีมือ","สร้างสรรค์","ยุติธรรม"];const extras=[...new Set((window.CAREER_EXTRA||[]).map(x=>x.group))];const rankNames={doctor:["แพทย์ทั่วไป","แพทย์อาวุโส","หัวหน้าทีมแพทย์"],nurse:["พยาบาลเริ่มงาน","พยาบาลอาวุโส","หัวหน้าทีมพยาบาล"],pharm:["เภสัชกรเริ่มงาน","เภสัชกรอาวุโส","หัวหน้าทีมเภสัชกรรม"],dent:["ทันตแพทย์เริ่มงาน","ทันตแพทย์อาวุโส","หัวหน้าทีมทันตกรรม"],engineer:["วิศวกรเริ่มงาน","วิศวกรอาวุโส","หัวหน้าทีมวิศวกรรม"],software:["โปรแกรมเมอร์ระดับต้น","นักพัฒนาอาวุโส","หัวหน้าทีมพัฒนา"],teacher:["ครูเริ่มงาน","ครูผู้มีประสบการณ์","ผู้ประสานงานด้านการสอน"],chef:["ผู้เริ่มงานครัว","เชฟอาวุโส","หัวหน้าครัว"],police:["ตำรวจเริ่มงาน","ตำรวจมีประสบการณ์","ผู้ประสานทีมตามหน้าที่"],judge:["ผู้พิพากษาเริ่มงาน","ผู้พิพากษามีประสบการณ์","ผู้พิพากษาอาวุโส"],pilot:["นักบินเริ่มงาน","นักบินมีประสบการณ์","นักบินอาวุโส"],singer:["นักร้องหน้าใหม่","นักร้องอาชีพมีผลงาน","ศิลปินอาวุโส"],actor_pro:["นักแสดงหน้าใหม่","นักแสดงมีผลงาน","นักแสดงนำตามผลงาน"],footballer:["นักฟุตบอลหน้าใหม่","นักฟุตบอลมีประสบการณ์","ผู้เล่นอาวุโส"],restaurant:["เจ้าของร้านเริ่มต้น","เจ้าของร้านที่มั่นคง","ผู้บริหารกิจการร้านอาหาร"],clinic:["ผู้บริหารคลินิกเริ่มต้น","ผู้จัดการกิจการมีประสบการณ์","ผู้บริหารกิจการอาวุโส"]};function rankName(id,rank){const x=by[id];return (rankNames[id]||[x?.name+"เริ่มงาน",x?.name+"มีประสบการณ์",x?.name+"ระดับอาวุโส"])[Math.max(0,Math.min(2,rank||0))]}
 const c=(label,result,delta,set)=>({label,result,delta,set});
 const add=(id,age,order,title,story,gate,choices,profession="")=>window.STORY.push({id,age,order,title,story,cw:gate,cwProfession:profession,custom:true,choices});
-const initial={profession:"",careerPlan:"",careerPhase:"",careerMenu:"",trainingAge:-1,foundation:false,careerCase:"",careerOutcome:"",careerCaseAge:-1,careerBalance:"",careerFriend:"",careerHistory:[],careerStudy:""};
+const initial={profession:"",careerPlan:"",careerPhase:"",careerMenu:"",trainingAge:-1,foundation:false,careerCase:"",careerOutcome:"",careerCaseAge:-1,careerBalance:"",careerFriend:"",careerHistory:[],careerStudy:"",careerRank:0};
 const working=state=>["งานประจำ","อิสระ","ธุรกิจ","งานประจำควบธุรกิจ"].includes(state.mode);
 const oldGoals={แพทย์:"doctor",พยาบาล:"nurse",ทนายความ:"lawyer",ตำรวจ:"police",ผู้พิพากษา:"judge"};
 const mapped={med1:"doctor",med2:"doctor",nurse1:"nurse",nurse2:"nurse",law1:"lawyer",law2:"lawyer",police1:"police",police2:"police",judge1:"judge",judge2:"judge"};
@@ -22,7 +22,10 @@ if(["teacher1","tech1","trade1","service1"].includes(e.id)&&state.profession)ret
 if(!e.cw)return true;
 switch(e.cw){
 case "explore":return !state.careerPlan&&!state.careerMenu&&!(state.careerPhase==="training"||state.careerPhase==="foundation")&&state.mode!=="เกี่ยวข้องอาชญากรรม"&&state.mode!=="ฟื้นตัว";
-case "group":return state.careerMenu==="open"||state.careerMenu==="more";
+case "group":return state.careerMenu==="open";
+case "extraPage":return state.careerMenu==="extra";
+case "extraGroups":return state.careerMenu===e.cwProfession;
+case "rank":{const r=state.careerRank||0;return state.profession===x.id&&working(state)&&r<2&&age>=(state.professionSince??age)+[3,7][r]&&s.stats.career>=[20,45][r]&&s.stats.skill>=[25,50][r]&&(!last(s,"cw_rank_"+x.id+"_")||age-last(s,"cw_rank_"+x.id+"_").age>=3)}
 case "pick":return state.careerMenu===e.cwProfession;
 case "bridge":return state.careerPlan===x.id&&x.req==="science"&&s.answers.studytrack!==0&&!state.foundation&&!["training","active"].includes(state.careerPhase);
 case "train":return state.careerPlan===x.id&&["","waiting","foundation"].includes(state.careerPhase)&&(x.req!=="science"||s.answers.studytrack===0||state.foundation)&&(state.careerPhase!=="foundation"||age>state.trainingAge);
@@ -39,19 +42,21 @@ function after(state,old,e,n,choice,item){const id=e.id,age=item.age;
 if(["health_choice","law_choice"].includes(id)&&oldGoals[state.goal]){state.careerPlan=oldGoals[state.goal];state.careerPhase="waiting"}
 if(e.cw==="bridge"&&n===0){state.trainingAge=age;state.careerPhase="foundation";state.foundation=true}
 if(e.cw==="train"&&n<2){state.trainingAge=age;state.careerPhase="training"}
-if(e.cw==="entry"&&n<2&&choice.set?.profession){state.careerPlan="";state.careerPhase="active";state.careerHistory.push({name:by[state.profession].name,age});}
+if(e.cw==="entry"&&n<2&&choice.set?.profession){state.careerPlan="";state.careerPhase="active";state.careerRank=0;state.careerHistory.push({name:by[state.profession].name,age});}
+if(e.cw==="rank"&&n===0)state.careerRank=Math.min(2,(old.careerRank||0)+1);
 if(e.cw==="case"){state.careerCase=e.cwProfession;state.careerCaseAge=age;state.careerOutcome=String(n);if(n===2||id.includes("nurse")&&n===1){state.careerBalance="ค้าง";state.careerFriend="ค้าง"}}
 if(e.cw==="follow"&&n===3){state.profession="";state.careerPlan="";state.careerPhase="";state.careerHistory.push({name:"ออกจากงาน",age});}
 if(!e.cw&&old.profession&&(old.mode!==state.mode||old.goal!==state.goal)&&(["switch1","career_reset","startup2","hobby3","babycare","crime_offer","crime_pressure","stayhome_a","carework","failure_cross","artist_mid"].includes(id)||e.flex==="jobshift")){state.profession="";if(state.careerPhase==="active")state.careerPhase="";state.careerHistory.push({name:"เปลี่ยนเส้นทางจาก"+by[old.profession].name,age});}
 }
-function story(e,state){if(e.cw==="follow"){const x=by[e.cwProfession],out=x.choices[Number(state.careerOutcome)]?.result;return (out?"ผลจากครั้งก่อน: "+out+"\n\n":"")+e.story}return e.story}
+function story(e,state){if(e.cw==="rank")return "คุณทำงานเป็น "+rankName(e.cwProfession,state.careerRank)+" มาระยะหนึ่ง มีโอกาสพัฒนาไปสู่ "+rankName(e.cwProfession,(state.careerRank||0)+1)+" ตามคุณสมบัติจำลองของเกม แต่จะมีความรับผิดชอบและภาระเพิ่มขึ้น คุณอยากเดินต่อไหม";if(e.cw==="follow"){const x=by[e.cwProfession],out=x.choices[Number(state.careerOutcome)]?.result;return (out?"ผลจากครั้งก่อน: "+out+"\n\n":"")+e.story}return e.story}
 for(let age=18;age<=79;age++){
 if(age===19||age%5===4){
 add("cw_explore_"+age,age,60,"เส้นทางอาชีพที่ยังเปิดอยู่","คุณอยากสำรวจเส้นทางใหม่หรือรักษาแผนเดิม ไม่จำเป็นต้องเปลี่ยนงานทันที","explore",[
 c("สำรวจสุขภาพ วิศวกรรม เทคโนโลยี และงานฝีมือ","คุณเปิดแผนสำรวจอาชีพ",{experience:2},{careerMenu:"open"}),
 c("สำรวจงานสร้างสรรค์และยุติธรรม","คุณเปิดแผนสำรวจอาชีพอีกกลุ่ม",{experience:2},{careerMenu:"more"}),
 c("เดินต่อในเส้นทางเดิม","คุณให้ความสำคัญกับแผนเดิม",{discipline:2}),
-c("ให้เวลากับเรื่องอื่นในชีวิต","คุณเลือกความสุขนอกงาน",{h:3,energy:2})]);
+c("ให้เวลากับเรื่องอื่นในชีวิต","คุณเลือกความสุขนอกงาน",{h:3,energy:2}),c("สำรวจอาชีพเพิ่มเติมอีกหลายกลุ่ม","คุณเปิดสารบัญอาชีพใหม่",{experience:2},{careerMenu:"extra"})]);
+if(extras.length){const pages=Array.from({length:Math.ceil(extras.length/4)},(_,i)=>extras.slice(i*4,i*4+4));add("cw_extra_page_"+age,age,60.6,"สำรวจกลุ่มอาชีพเพิ่มเติม","เลือกหมวดที่ตรงกับความสนใจของคุณ","extraPage",pages.map((page,i)=>c(page.join(" / "),"คุณเปิดหมวดอาชีพที่สนใจ",{experience:1},{careerMenu:"extraPage"+i})));for(const [i,page] of pages.entries())add("cw_extra_groups_"+i+"_"+age,age,60.7,"เลือกกลุ่มอาชีพ","แต่ละสายมีระยะเวลาเตรียมตัวและคุณสมบัติต่างกัน","extraGroups",page.map(g=>c(g,"คุณสำรวจกลุ่ม"+g,{knowledge:1},{careerMenu:g})),"extraPage"+i);for(const [i,g] of extras.entries())add("cw_extra_pick_"+i+"_"+age,age,62.1,"อาชีพด้าน"+g,"เลือกแผนการฝึกและการศึกษาที่อยากเตรียมตัว ไม่ได้เริ่มงานทันที","pick",catalog.filter(x=>x.group===g).map(x=>c(x.name,"คุณตั้งเป้าหมาย"+x.name,{knowledge:2},{careerPlan:x.id,careerPhase:"waiting",careerMenu:""})),g);}
 add("cw_group_"+age,age,61,"เลือกกลุ่มอาชีพ","คุณอยากค้นหาข้อมูลอาชีพในด้านไหน","group",[
 c("สุขภาพ","คุณสำรวจสายสุขภาพ",{knowledge:1},{careerMenu:"สุขภาพ"}),
 c("วิศวกรรม เทคโนโลยี และบัญชี","คุณสำรวจสายเทคโนโลยี",{knowledge:1},{careerMenu:"เทคโนโลยี"}),
@@ -61,6 +66,8 @@ add("cw_justice_"+age,age,60.5,"เลือกอาชีพด้านยุ
 for(const g of groups.slice(0,4))add("cw_pick_"+groups.indexOf(g)+"_"+age,age,62,"อาชีพด้าน"+g,"คุณต้องการตั้งเป้าหมายอาชีพใด","pick",catalog.filter(x=>x.group===g).map(x=>c(x.name,"คุณตั้งเป้าหมาย"+x.name+" และต้องเตรียมคุณสมบัติก่อน",{knowledge:2},{careerPlan:x.id,careerPhase:"waiting",careerMenu:""})),g);
 }
 for(const x of catalog){
+add("cw_rank_"+x.id+"_"+age,age,67.5,"โอกาสเติบโตในอาชีพ"+x.name,"คุณมีโอกาสพัฒนาบทบาทตามผลงานและคุณสมบัติจำลอง","rank",[
+c("รับโอกาสและผ่านการประเมินในเกม","คุณผ่านการประเมินจำลองและรับบทบาทใหม่ รายได้พื้นฐานเพิ่มขึ้นพร้อมภาระ",{career:5,skill:3,stress:3}),c("ฝึกเพิ่มเติมก่อนรับบทบาท","คุณเพิ่มความพร้อมและยังไม่เปลี่ยนระดับ",{skill:4,knowledge:3}),c("รักษาตำแหน่งเดิมเพื่อชีวิตส่วนตัว","คุณเลือกความสมดุลมากกว่าการเลื่อนระดับ",{h:4,energy:3}),c("ทบทวนเส้นทางอาชีพ","คุณยังมีสิทธิสำรวจงานอื่นภายหลัง",{experience:3,confidence:2})],x.id);
 if(x.req==="science")add("cw_bridge_"+x.id+"_"+age,age,63,"พื้นฐานวิทย์–คณิตที่ยังขาด","ตามกติกาเกม เส้นทาง"+x.name+" ต้องมีพื้นฐานวิทย์–คณิตก่อน คุณไม่ได้เลือกแผนนี้ตอนมัธยม จึงยังเข้าอาชีพโดยตรงไม่ได้","bridge",[
 c("กลับไปปรับพื้นฐานและเรียนเพิ่มเติม","คุณเริ่มสะสมพื้นฐานที่ขาด ใช้เวลาอย่างน้อยหนึ่งปีในเกม",{knowledge:5,discipline:3,m:-800}),
 c("พักแผนไว้ก่อน","คุณยังไม่ผ่านเงื่อนไขและยังไม่ได้เริ่มอาชีพ",{patience:2}),
@@ -92,4 +99,4 @@ c("เล่าความจริงและฟังความเห็�
 add("cw_family_"+age,age,71,"วันที่ลูกอยากให้คุณอยู่ด้วย","ลูกมีเรื่องอยากเล่าและสังเกตว่าช่วงนี้คุณวุ่นกับงานมากขึ้น","family",[
 c("กันเวลาฟังลูกโดยไม่เอางานมาปน","ลูกได้พื้นที่พูดและคุณได้รู้เรื่องสำคัญ",{child:5,r:3},{careerBalance:""}),c("นัดเวลาที่ทำได้จริงแล้วทำตาม","ลูกเริ่มไว้ใจคำพูดของคุณ",{child:3,reliable:3},{careerBalance:""}),c("เลื่อนนัดโดยไม่อธิบาย","ลูกเริ่มไม่กล้าเล่าสิ่งที่สำคัญ",{child:-5,stress:2}),c("ปรับภาระงานและขอคนช่วย","บ้านและงานมีแผนที่ทำได้มากขึ้น",{problem:4,energy:3},{careerBalance:""})]);
 }
-return {initial,allowed,choices,after,story,qualified,by,count:catalog.length};})();
+return {initial,allowed,choices,after,story,qualified,by,count:catalog.length,rankName};})();
