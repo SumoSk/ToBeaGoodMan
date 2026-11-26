@@ -58,7 +58,7 @@ case "hobbyMenu":return !st.hobbyMenu&&a-beforeAge(s,"mx_hobby_menu_")>=5;
 case "hobbyPick":return st.hobbyMenu===e.group;
 case "hobbyAim":return !!h&&st.hobbyAim==="choose";
 case "hobbyPractice":return !!h&&["relax","career","both"].includes(st.hobbyAim)&&a>st.hobbyStart&&a-st.hobbyPractice>=2;
-case "hobbyCareer":return !!h&&!!h.career&&st.hobbyXP>=2&&["career","both"].includes(st.hobbyAim)&&!st.careerPlan&&!st.careerMenu&&st.profession!==h.career&&a-beforeAge(s,"mx_hobby_career_")>=4&&a<=74;
+case "hobbyCareer":return !!h&&!!h.career&&st.hobbyXP>=2&&["career","both"].includes(st.hobbyAim)&&!st.careerPlan&&!st.careerMenu&&st.profession!==h.career&&a-beforeAge(s,"mx_hobby_career_")>=4&&a<=94;
 case "hobbyTogether":return !!h&&partnered(st)&&!!p&&a-beforeAge(s,"mx_hobby_together_")>=5&&a>st.hobbyStart;
 case "partnerIntro":return partnered(st)&&!!p&&st.partnerJobAge<st.partnerSince;
 case "partnerWork":return partnered(st)&&!!p&&p.kind===e.kind&&a>st.partnerSince&&a-beforeAge(s,"mx_partner_work_")>=4;
@@ -113,7 +113,7 @@ const issues={
 พัก:["ชีวิตที่เดินคนละจังหวะ","คนรัก{job} มี{burden} ขณะที่คุณมีตารางของตัวเอง"]
 };
 for(let age=15;age<=99;age++){
-if(age>=18&&age<=79)details.forEach((d,i)=>add("mx_detail_"+i+"_"+age,age,72+i/100,d.title,d.story,"detail",d.choices,{detailJob:d.job,detailIndex:i,detailDelay:i%2===0?1:3}));
+if(age>=18&&age<=99)details.forEach((d,i)=>add("mx_detail_"+i+"_"+age,age,72+i/100,d.title,d.story,"detail",d.choices,{detailJob:d.job,detailIndex:i,detailDelay:i%2===0?1:3}));
 if(age>=18)for(const [flag,[title,body,cs]] of Object.entries(follow))add("mx_follow_"+flag+"_"+age,age,74,title,body,"detailFollow",cs,{flag});
 if(age===15||age%5===0){
 add("mx_hobby_menu_"+age,age,45,"เวลาที่เป็นของเรา","อยากมีงานอดิเรกใหม่ไหม หรืออยากเก็บความสนใจเดิมไว้ ไม่จำเป็นต้องทำเพื่อหาเงิน","hobbyMenu",[
