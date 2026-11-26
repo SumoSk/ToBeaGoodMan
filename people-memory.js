@@ -8,7 +8,7 @@ function duty(person,ids){map(required,person,ids)}
 function gate(id,parent,choices){if(by[id])gates[id]=[parent,choices]}
 const known=(st,n)=>!!st.people[n];
 const blocked=(st,n)=>["ไม่ชอบ","เว้นระยะ"].includes(st.people[n]?.feeling);
-const privateOK=(st,n)=>known(st,n)&&!blocked(st,n)&&st.people[n].boundary!=="งานเท่านั้น"&&st.people[n].boundary!=="ไม่ติดต่อ";
+const privateOK=(st,n)=>known(st,n)&&!blocked(st,n)&&st.people[n].boundary!=="งานเท่านั้น"&&st.people[n].boundary!=="ไม่ติดต่อ"&&st.people[n].boundary!=="รู้จักห่างๆ";
 const set=(st,n,patch)=>{st.people[n]={...(st.people[n]||{feeling:"เฉยๆ",boundary:"ยังไม่สนิท"}),...patch}};
 const like=(st,n)=>set(st,n,{feeling:"รู้สึกดี",boundary:"เปิดใจ"});
 const stop=(st,n,feeling="เว้นระยะ")=>set(st,n,{feeling,boundary:"ไม่ติดต่อ"});
@@ -51,10 +51,10 @@ if(required[e.id]?.some(n=>!known(st,n)))return false;
 if(e.id==="glass"&&!privateOK(st,"เมฆ"))return false;
 if(e.id==="teen_future"&&st.teenBond&&!privateOK(st,st.teenBond))return false;
 if(["adult_meet2","early_love","dating"].includes(e.id)&&st.adultInterest&&!privateOK(st,st.adultInterest))return false;
-if(e.id==="new_love"&&st.flirt&&blocked(st,st.flirt))return false;
+if(e.id==="new_love"&&st.flirt&&known(st,st.flirt)&&(!privateOK(st,st.flirt)||st.people[st.flirt].boundary==="เพื่อนเท่านั้น"))return false;
 if(e.flex==="court"&&st.candidate&&blocked(st,st.candidate))return false;
-if(e.id==="secret_begin"&&st.flirt&&blocked(st,st.flirt))return false;
-if(e.id==="people_boundary")return false;
+if(e.id==="secret_begin"&&st.flirt&&known(st,st.flirt)&&(!privateOK(st,st.flirt)||st.people[st.flirt].boundary==="เพื่อนเท่านั้น"))return false;
+if(e.personIntro)return known(st,e.personIntro);
 if(e.personBoundary)return known(st,e.personBoundary)&&!blocked(st,e.personBoundary)&&!["ไม่ติดต่อ","งานเท่านั้น"].includes(st.people[e.personBoundary].boundary)&&!(st.partnerName===e.personBoundary&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship));
 return true}
 function after(st,old,e,n,ch,item){const id=e.id;
@@ -87,11 +87,14 @@ if(id==="travel_stranger"){meet(st,"ออม");if(n===3)stop(st,"ออม");el
 if(id==="meet_late"){meet(st,"จูน");if(n===3)stop(st,"จูน");if(n===2)set(st,"จูน",{boundary:"เพื่อนเท่านั้น"})}
 if(e.flex==="reopen"&&st.candidate)meet(st,st.candidate);
 if(e.flex==="court"&&old.candidate){if(n===2)set(st,old.candidate,{boundary:"เพื่อนเท่านั้น"});if(n===3)stop(st,old.candidate)}
+if(e.personIntro){const name=e.personIntro;if(n===0)like(st,name);if(n===1)set(st,name,{feeling:"เฉยๆ",boundary:"ยังไม่สนิท"});if(n===2){set(st,name,{feeling:"ไม่ชอบ",boundary:e.introWork?"งานเท่านั้น":"ไม่ติดต่อ"});}if(n===3){set(st,name,{feeling:"เฉยๆ",boundary:e.introWork?"งานเท่านั้น":"รู้จักห่างๆ"});}}
 if(e.personBoundary){const person=e.personBoundary;if(n===0)like(st,person);if(n===1)set(st,person,{boundary:"รู้จักห่างๆ"});if(n===2)stop(st,person);if(n===3)stop(st,person,"ไม่ชอบ");if(n>=2){for(const k of ["flirt","interest","candidate","teenBond","teenCrush","adultInterest"])if(st[k]===person)st[k]="";}}
 if(old.partnerName&&old.partnerName!==st.partnerName&&["โสด","แยกทาง"].includes(st.relationship))stop(st,old.partnerName);
 if(st.partnerName&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship))like(st,st.partnerName);
 }
+for(const [id,name,age,order,work] of [["fah","ฟ้า",4,-0.1,false],["ploy","พลอย",24,-8,true],["boss","น้ำ",24,-7,true],["min","มิน",32,-8,true]]){(id==="fah"?window.EPISODES:window.STORY).push({id:"people_intro_"+id,...(id==="fah"?{after:"kindergarten"}:{age,order}),title:"รู้สึกอย่างไรกับ"+name,story:"หลังเพิ่งรู้จัก"+name+" คุณรู้สึกอย่างไร ไม่จำเป็นต้องชอบหรือสนิทกับทุกคน",personIntro:name,introWork:work,custom:true,choices:[c("รู้สึกดี อยากรู้จักมากขึ้น","คุณเปิดใจทำความรู้จักโดยไม่ต้องเร่งความสนิท",{social:1}),c("เฉยๆ ขอค่อยๆ รู้จักกัน","คุณยังไม่ต้องตัดสินใจเรื่องความสัมพันธ์",{patience:1}),c("ไม่ชอบ อยากเว้นระยะ","คุณเลือกไม่สานต่อเรื่องส่วนตัว"+(work?" แต่ยังร่วมงานตามหน้าที่":""),{selfcontrol:1}),c(work?"อยากคุยเฉพาะเรื่องงาน":"ขอรู้จักกันห่างๆ","คุณมีสิทธิรักษาขอบเขตส่วนตัว",{selfcontrol:1})]})}
+const introFah=window.EPISODES.pop(); if(introFah?.id==="people_intro_fah")window.EPISODES.unshift(introFah);else if(introFah)window.EPISODES.push(introFah);
 const names=["เมฆ","ฟ้า","พลอย","น้ำ","มิน","แพร","ออม","ครูแนน","มายด์","พิม","นารา","ริน","ใบเฟิร์น","อิง","จูน"];
 for(const [i,name] of names.entries())for(const age of [12,17,22,30,40,50,60,70,80,90]){if(i>=2&&age<22)continue;window.STORY.push({id:"people_boundary_"+i+"_"+age,age,order:78+i/100,title:"ความรู้สึกที่มีต่อ"+name,story:"คุณมีโอกาสทบทวนความรู้สึกที่มีต่อ"+name+" ไม่จำเป็นต้องฝืนสนิทหรือใช้เวลาส่วนตัวร่วมกัน หากยังมีหน้าที่เกี่ยวข้องกันก็รักษาขอบเขตตามหน้าที่ได้",personBoundary:name,custom:true,choices:[c("รู้สึกดี อยากรักษาความสัมพันธ์","คุณเปิดพื้นที่ให้ติดต่อกันเมื่อทั้งคู่ต้องการ",{friend:1}),c("เฉยๆ ขอรู้จักกันห่างๆ","คุณไม่ต้องสนิทกับทุกคน",{selfcontrol:1}),c("ไม่อยากติดต่อเรื่องส่วนตัวแล้ว","เกมจะจดจำขอบเขตนี้และหยุดเรื่องส่วนตัวของคนนี้",{selfcontrol:1}),c("ไม่ชอบ ขอเว้นระยะ","คุณเลือกไม่สานต่อความสัมพันธ์ส่วนตัว โดยยังรับผิดชอบหน้าที่ที่หลีกเลี่ยงไม่ได้",{selfcontrol:1})]})}
-function story(e,st){if(e.id==="group"&&blocked(st,"เมฆ"))return "ครูจัดกลุ่มให้คุณทำงานกับเมฆ แม้คุณไม่อยากสนิทกับเขา แต่ต้องทำงานตามหน้าที่ เมฆต้องดูแลน้องจึงไม่ได้ช่วยงาน เพื่อนจะตัดชื่อ";if(["office_rival","office_rival2"].includes(e.id)&&!privateOK(st,"พลอย"))return "แม้คุณอยากรักษาระยะส่วนตัวกับพลอย แต่ยังต้องร่วมงานในทีมตามหน้าที่ "+e.story;return e.story}
+function story(e,st){if(e.id==="oldfriendjob"&&!privateOK(st,"ฟ้า"))return "ผู้สมัครคนหนึ่งเป็นหลานของฟ้า คนที่คุณเคยรู้จักสมัยเด็ก แม้ไม่ได้ติดต่อกันส่วนตัว คุณยังต้องพิจารณาตามหน้าที่และกติกา";if(e.id==="group"&&blocked(st,"เมฆ"))return "ครูจัดกลุ่มให้คุณทำงานกับเมฆ แม้คุณไม่อยากสนิทกับเขา แต่ต้องทำงานตามหน้าที่ เมฆต้องดูแลน้องจึงไม่ได้ช่วยงาน เพื่อนจะตัดชื่อ";if(["office_rival","office_rival2"].includes(e.id)&&!privateOK(st,"พลอย"))return "แม้คุณอยากรักษาระยะส่วนตัวกับพลอย แต่ยังต้องร่วมงานในทีมตามหน้าที่ "+e.story;return e.story}
 return {allowed,after,story,privateOK,blocked,known};})();
