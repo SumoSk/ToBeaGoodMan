@@ -22,7 +22,7 @@ bully:[{fair:3,friend:2},{friend:-4,respect:-2},{fair:2,problem:2},{friend:4},{c
 exam:[{fair:4,responsibility:3},{fair:-4,reliable:-3},{fair:3},{responsibility:-1}],
 group:[{friend:-2},{fair:-3,friend:2},{fair:2,friend:3,problem:3},{fair:2,problem:2}],
 crush:[{partner:2,social:2},{sacrifice:2},{friend:-4,reliable:-3},{social:2,confidence:2}],
-route:[{knowledge:10,discipline:4},{knowledge:6,skill:5,energy:-3},{skill:8,career:5},{experience:8,nightlife:4},{skill:10,knowledge:4}],
+route:[{knowledge:10,discipline:4,ambition:2},{knowledge:6,skill:5,energy:-3,ambition:5},{skill:8,career:5,ambition:6},{experience:8,nightlife:4},{skill:10,knowledge:4,ambition:4}],
 campus:[{knowledge:5,friend:3},{social:3,network:3},{knowledge:3,energy:2},{network:6,creative:2}],
 shift:[{skill:3,energy:-4},{discipline:3,problem:2},{career:-2},{problem:3,reliable:2}],
 work:[{savings:4000,m:-4000,security:5},{spending:5,social:2},{mother:3,father:3},{spending:3,satisfaction:2}],
