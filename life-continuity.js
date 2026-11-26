@@ -6,7 +6,7 @@ function choice(id,n,patch){Object.assign(by[id].choices[n],patch)}
 edit("kindergarten",{story:"แม่กำลังจะกลับบ้าน เด็กผู้หญิงข้างๆ ชื่อฟ้า ครูเพิ่งแนะนำให้รู้จักกัน เธอร้องไห้เพราะยังไม่คุ้นกับโรงเรียน"});
 edit("toy",{story:"เมฆ เด็กข้างบ้านที่ป้าอ้อยพามาเล่นด้วย หยิบตุ๊กตาที่คุณชอบไปเล่น คุณจะทำอย่างไร"});
 edit("team",{story:"หลังสมัครเข้าทีมและซ้อมจนได้ลงแข่งขัน ทีมของคุณผ่านมาถึงรอบชิง ครูให้สมาชิกช่วยกันตัดสินใจเรื่องเปลี่ยนตัว ขณะนี้ทีมตามหนึ่งประตู เพื่อนคนหนึ่งยังไม่ได้ลงสนาม"});
-req("team","football=ทีม");req("drawing","schoolLike=สร้างสรรค์");edit("drawing",{age:8,order:8});req("secondary_a","@joinedClub");
+req("team","football=ทีม");edit("drawing",{story:"ในคาบศิลปะครูให้ทุกคนลองวาดสัตว์ คุณลองวาดช้าง เพื่อนบอกว่าหน้าตาเหมือนมันฝรั่ง ครูกำลังจะติดภาพหน้าห้อง"});req("secondary_a","@joinedClub");
 edit("study_report",{story:"ครูแจกสมุดรายงานผลการเรียน คุณเห็นวิชาที่ทำได้และวิชาที่ต้องฝึกเพิ่ม ผลขึ้นกับความตั้งใจและการเรียนที่ผ่านมา"});
 edit("scholar",{story:"ครูประกาศว่าคุณผ่านการพิจารณาทุนการเรียนในเกมจากผลการเรียนและความตั้งใจ แต่เพื่อนอีกคนยังขาดเงินเรียน"});req("scholar","@studyReady");
 edit("parentdream",{story:"พ่อชวนคุยเรื่องเรียนต่อและอาชีพที่มั่นคง คุณเองกำลังค้นหาว่าความสนใจและความสามารถที่มีจะพาไปทางไหน"});
@@ -25,6 +25,17 @@ req("colleague office_rival","@employee","@knowPloy");req("office_rival2","@empl
 req("clientanger clientreview clientfriend","@workActive","clientRole=ติดต่อ");req("office promotion fired layoff","@employee");req("raise employee oldfriendjob","@employee","leadRole=หัวหน้า");req("bribe","@workActive","leadRole=หัวหน้า");req("success1 failure1","@workActive");
 req("study1","@university");req("graduate","@university");req("campusclub","@joinedCampusClub");
 req("hobby3","@hobby");req("retirecall","@everWorked");
+req("boss_fall","@employee");req("client_surprise","@workActive","clientRole=ติดต่อ");req("failure_cross","@everWorked");req("retire_a","@everWorked");
+req("ambition1","@workActive");req("ambition2 ambition3 ambition4","@workActive");req("power1 power2","@workActive");
+req("bkkwork localwork regionalwork bkk_local cmjob kkjob skjob hyjob","@workActive");req("workcity","@workActive");req("work_people","@employee");req("longdistance","@partner");
+req("child_cross","parent=มีลูก");req("school_pressure","parent=มีลูก");
+req("teacherlater","parent=มีลูก");
+edit("family_a",{story:"วันนี้คุณมีวันหยุด ไม่มีงานด่วน คุณอยากใช้เวลานี้กับอะไรหรือใคร"});
+edit("reunion",{story:"เมฆ เพื่อนบ้านวัยเด็กที่เคยรู้จักกัน กลับมาติดต่อและอยากถามสารทุกข์สุขดิบ รวมถึงพูดถึงเรื่องที่เคยทำให้ไม่เข้าใจกัน"});
+edit("failure_cross",{story:"คนที่คุณเคยรู้จักจากการทำงานติดต่อมา เขามีข้อเสนองานที่ต่างจากเส้นทางเดิม และอยากให้คุณลองฟังก่อน"});
+edit("early_baby",{story:"หลังใช้เวลาคบกัน คุณกับคนรักเริ่มคุยเรื่องการมีลูก ทั้งรายได้ ความพร้อม และความต้องการของทั้งสองฝ่าย"});
+edit("retirecall",{story:"คนที่เคยรู้จักคุณจากการทำงานโทรมาขอคำแนะนำเรื่องการดูแลทีม แม้คุณอาจไม่ได้เคยเป็นหัวหน้าเอง"});
+
 edit("retire",{story:"เมื่อเข้าสู่วัยเกษียณ คุณมีโอกาสจัดเวลาให้สิ่งที่อยากทำมากขึ้น จะสานต่อความสนใจเดิมหรือเริ่มอะไรใหม่ก็ได้"});
 edit("oldfriendjob",{story:"ฟ้า เพื่อนที่คุณรู้จักตั้งแต่เด็ก ติดต่อมาว่าหลานของเธอสมัครงานในหน่วยงานที่คุณดูแล"});
 edit("family",{story:"คุณกับคนรักกำลังคุยกันเรื่องอนาคตระยะยาว ทั้งคู่มีโอกาสตกลงว่าจะมีลูกหรือใช้ชีวิตคู่แบบไหน"});
@@ -42,6 +53,12 @@ edit("primary",{order:-5});edit("movehome",{order:-10});edit("school_interest",{
 edit("adult_romance",{order:5});edit("adult_meet",{order:-10});edit("adult_meet2",{order:-5});edit("career_select",{order:1});for(const id of ["health_choice","law_choice","creative_choice","business_choice"])edit(id,{order:2});
 const initial={childLike:"",schoolLike:"",football:"",music:"",creativePath:"",studyHabit:"",teenLike:"",teenCrush:"",teenBond:"",teenRelationship:"",adultInterest:"",adultBond:"",romanceOpen:"",nightChoice:"",workRole:"",leadRole:"",clientRole:"",knowPloy:"",knowBoss:"",knowMin:"",partnerName:"",pastRomance:"",focus:"",midFocus:"",lateFocus:"",everWorked:"",joinedClub:"",mek:""};
 function stateAfter(state,id,n,choice){const old={...state};Object.assign(state,choice.set||{});if(id==="secondary")state.joinedClub=n<3?"ใช่":"";
+if(id==="work_entry"&&n===0)state.everWorked="ใช่";
+if(id==="lead_again"&&n===0){state.leadRole="หัวหน้า";state.everWorked="ใช่";}
+if(id==="lead_again"&&n!==0)state.leadRole="";
+if(id==="single_life"&&n===2)state.romanceOpen="เปิดใจ";
+if(id==="meet_late"&&n===0){state.relationship="คบกัน";state.partnerName="จูน";state.pastRomance="ใช่";}
+if(id==="meet_late"&&n===1)state.flirt="จูน";
 if(id==="crush"&&[0,3].includes(n))state.teenBond="มายด์";
 if(id==="teen_future"&&n===1){state.relationship="คบกัน";state.partnerName=state.teenBond;state.pastRomance="ใช่";}
 if(id==="adult_romance"&&n===2&&old.relationship==="คบกัน"){/* preference is not an automatic breakup */}
@@ -66,7 +83,7 @@ case "@studyReady":return s.stats.knowledge>=20&&s.stats.discipline>=48;
 case "@mindBond":return state.teenBond==="มายด์";
 case "@mindPartner":return state.partnerName==="มายด์"||(!state.partnerName&&[0,3].includes(a.date));
 case "@romanceAllowed":return state.romanceOpen!=="ไม่"&&state.romanceOpen!=="เปิดใจ";
-case "@romanceReady":return state.romanceOpen==="เปิดใจ"&&!!state.adultInterest&&state.adultBond==="รู้จัก"||state.romanceOpen==="เดิม"&&!!state.teenBond;
+case "@romanceReady":return (state.romanceOpen==="เปิดใจ"&&!!state.adultInterest&&state.adultBond==="รู้จัก")||(state.romanceOpen==="เดิม"&&!!state.teenBond);
 case "@pastRomance":return !!state.pastRomance;
 case "@workActive":return work;
 case "@employee":return ["งานประจำ","งานประจำควบธุรกิจ"].includes(state.mode)&&state.workRole==="พนักงาน";
