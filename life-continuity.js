@@ -19,7 +19,7 @@ edit("campus",{story:"ฟ้า เพื่อนสมัยเรียนท
 edit("pub",{story:"หลังเลือกลองเที่ยวกลางคืน เพื่อนชวนไปร้านเพลง ผู้หญิงชื่อแพรเดินเข้ามาทักและแนะนำตัว เพื่อนอีกคนชวนดื่มหนัก"});req("pub","nightChoice=ลอง");
 req("date","@mindBond","@romanceAllowed");req("tempt caught","@partner");edit("tempt",{story:"คนที่เคยรู้จักทักมาชวนพบตามลำพัง ขณะที่คุณกำลังคบมายด์อยู่"});req("tempt caught","@mindPartner");req("love1","@mindPartner");
 req("adult_meet","romanceOpen=เปิดใจ","@single");req("early_love","@romanceReady","@single");edit("early_love",{story:"คนที่คุณเลือกทำความรู้จักกำลังคุยกับคุณอย่างจริงจัง ทั้งคู่เริ่มถามถึงความสัมพันธ์และชีวิตในอนาคต"});
-req("dating","@romanceReady","@single");req("early_baby","@partner");req("family","@partner");req("marriage wedding","@partner");req("child childtime schoolfee","parent=มีลูก");req("single independent","@single");req("exreturn","@pastRomance");
+req("dating","@romanceReady","@single");req("early_baby","@partner");req("family","@partner");req("marriage wedding","@partner");req("wedding","@married");req("child childtime schoolfee","parent=มีลูก");req("single independent","@single");req("exreturn","@pastRomance");
 req("work_people","@employee");req("client_entry","@workActive");req("lead_offer","@employee");req("lead_people","@employee");
 req("colleague office_rival","@employee","@knowPloy");req("office_rival2","@employee");req("bossromance bossromance2","@employee","@knowBoss");req("juniorromance junior2","@employee","leadRole=หัวหน้า","@knowMin");
 req("clientanger clientreview clientfriend","@workActive","clientRole=ติดต่อ");req("office promotion fired layoff","@employee");req("raise employee oldfriendjob","@employee","leadRole=หัวหน้า");req("bribe","@workActive","leadRole=หัวหน้า");req("success1 failure1","@workActive");
@@ -52,7 +52,8 @@ edit("new_love",{story:"คนที่คุณเคยแสดงควา�
 edit("primary",{order:-5});edit("movehome",{order:-10});edit("school_interest",{order:-5});edit("workcity",{order:9});edit("early_love",{order:0});edit("lead_offer",{order:-5});
 edit("adult_romance",{order:5});edit("adult_meet",{order:-10});edit("adult_meet2",{order:-5});edit("career_select",{order:1});for(const id of ["health_choice","law_choice","creative_choice","business_choice"])edit(id,{order:2});
 const initial={childLike:"",schoolLike:"",football:"",music:"",creativePath:"",studyHabit:"",teenLike:"",teenCrush:"",teenBond:"",teenRelationship:"",adultInterest:"",adultBond:"",romanceOpen:"",nightChoice:"",workRole:"",leadRole:"",clientRole:"",knowPloy:"",knowBoss:"",knowMin:"",partnerName:"",pastRomance:"",focus:"",midFocus:"",lateFocus:"",everWorked:"",joinedClub:"",mek:""};
-function stateAfter(state,id,n,choice){const old={...state};Object.assign(state,choice.set||{});if(id==="secondary")state.joinedClub=n<3?"ใช่":"";
+function stateAfter(state,id,n,choice){const old={...state};Object.assign(state,choice.set||{});if(id==="wedding"&&["คบกัน","อยู่ด้วยกัน"].includes(state.relationship))state.married="ใช่";
+if(id==="secondary")state.joinedClub=n<3?"ใช่":"";
 if(id==="work_entry"&&n===0)state.everWorked="ใช่";
 if(id==="lead_again"&&n===0){state.leadRole="หัวหน้า";state.everWorked="ใช่";}
 if(id==="lead_again"&&n!==0)state.leadRole="";
