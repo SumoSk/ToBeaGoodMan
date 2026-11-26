@@ -42,6 +42,7 @@ if(by.campus_b)by.campus_b.story="เพื่อนตั้งกลุ่ม�
 if(by.study_team)by.study_team.story="ก่อนส่งโครงการ เพื่อนในกลุ่มคนหนึ่งต้องกลับบ้านด่วน แพรอยากเลื่อนนัด ส่วนอีกคนกลัวคะแนนไม่ทัน";
 if(by.pub_cross)by.pub_cross.story="แพรชวนกินกาแฟวันหยุด เธออยากรู้จักคุณนอกบรรยากาศร้านเพลง";
 if(by.pub_cross)by.pub_cross.choices[1]={...by.pub_cross.choices[1],label:"ชวนเพื่อนในกลุ่มมาร่วมด้วย",result:"ทุกคนได้พบกันในบรรยากาศกลุ่ม"};
+if(by.office_rival)by.office_rival.choices[3]={...by.office_rival.choices[3],label:"ขอคุยเรื่องการแบ่งผลงานหลังจบงาน",result:"ทั้งคู่ได้คุยเรื่องความรับผิดชอบโดยไม่ต้องสนิทกันนอกงาน"};
 if(by.office_rival2)by.office_rival2.choices[3]={...by.office_rival2.choices[3],label:"นัดคุยเรื่องงานกับคนกลาง",result:"ทั้งคู่ได้พูดคุยเรื่องงานในขอบเขตที่เหมาะสม"};
 function allowed(e,st,s){if(e.id==="people_mek_visit")return known(st,"เมฆ")&&!Object.hasOwn(s.answers,e.id);
 if(e.id==="toy"&&Object.hasOwn(s.answers,"meet_mek")&&!Object.hasOwn(s.answers,"people_mek_visit"))return false;
@@ -55,7 +56,7 @@ if(e.id==="new_love"&&st.flirt&&known(st,st.flirt)&&(!privateOK(st,st.flirt)||st
 if(e.flex==="court"&&st.candidate&&blocked(st,st.candidate))return false;
 if(e.id==="secret_begin"&&st.flirt&&known(st,st.flirt)&&(!privateOK(st,st.flirt)||st.people[st.flirt].boundary==="เพื่อนเท่านั้น"))return false;
 if(e.personIntro)return known(st,e.personIntro);
-if(e.personBoundary)return known(st,e.personBoundary)&&!blocked(st,e.personBoundary)&&!["ไม่ติดต่อ","งานเท่านั้น"].includes(st.people[e.personBoundary].boundary)&&!(st.partnerName===e.personBoundary&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship));
+if(e.personBoundary){const p=e.personBoundary;return privateOK(st,p)&&st.people[p].feeling==="รู้สึกดี"&&!(st.partnerName===p&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship))&&s.history.some(x=>x.age>=e.age-5&&(optional[x.id]?.includes(p)||required[x.id]?.includes(p)||by[x.id]?.personIntro===p||x.id==="meet_mek"&&p==="เมฆ"||x.id==="meet_mind"&&["มายด์","พิม","นารา"].includes(p)||x.id==="adult_meet"&&["ริน","ใบเฟิร์น","อิง"].includes(p)));}
 return true}
 function after(st,old,e,n,ch,item){const id=e.id;
 if(id==="meet_mek"){meet(st,"เมฆ");if(n===0)like(st,"เมฆ");if(n===2)stop(st,"เมฆ","ไม่ชอบ");if(n===3)set(st,"เมฆ",{feeling:"ยังไม่คุ้น"});}
