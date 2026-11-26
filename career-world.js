@@ -49,7 +49,7 @@ if(e.cw==="follow"&&n===3){state.profession="";state.careerPlan="";state.careerP
 if(!e.cw&&old.profession&&(old.mode!==state.mode||old.goal!==state.goal)&&(["switch1","career_reset","startup2","hobby3","babycare","crime_offer","crime_pressure","stayhome_a","carework","failure_cross","artist_mid"].includes(id)||e.flex==="jobshift")){state.profession="";if(state.careerPhase==="active")state.careerPhase="";state.careerHistory.push({name:"เปลี่ยนเส้นทางจาก"+by[old.profession].name,age});}
 }
 function story(e,state){if(e.cw==="rank")return "คุณทำงานเป็น "+rankName(e.cwProfession,state.careerRank)+" มาระยะหนึ่ง มีโอกาสพัฒนาไปสู่ "+rankName(e.cwProfession,(state.careerRank||0)+1)+" ตามคุณสมบัติจำลองของเกม แต่จะมีความรับผิดชอบและภาระเพิ่มขึ้น คุณอยากเดินต่อไหม";if(e.cw==="follow"){const x=by[e.cwProfession],out=x.choices[Number(state.careerOutcome)]?.result;return (out?"ผลจากครั้งก่อน: "+out+"\n\n":"")+e.story}return e.story}
-for(let age=18;age<=79;age++){
+for(let age=18;age<=99;age++){
 if(age===19||age%5===4){
 add("cw_explore_"+age,age,60,"เส้นทางอาชีพที่ยังเปิดอยู่","คุณอยากสำรวจเส้นทางใหม่หรือรักษาแผนเดิม ไม่จำเป็นต้องเปลี่ยนงานทันที","explore",[
 c("สำรวจสุขภาพ วิศวกรรม เทคโนโลยี และงานฝีมือ","คุณเปิดแผนสำรวจอาชีพ",{experience:2},{careerMenu:"open"}),
