@@ -14,7 +14,7 @@ case "projectfix":return st.projectTrouble;
 case "business":return !st.lateBusiness&&stats.m>=10000&&stats.physical>=30;
 case "bizgrowth":return st.lateBusiness>0&&!st.bizTrouble;
 case "bizfix":return st.lateBusiness>0&&st.bizTrouble;
-case "workchoice":return working(st)||st.lateWork==="retired";
+case "workchoice":return working(st)||st.lateWork==="retired"||st.everWorked;
 case "luxury":return stats.m>=50000;
 case "community":return !st.clubMember;
 case "clubdrama":case "clubtrip":return st.clubMember;
@@ -22,8 +22,8 @@ case "scamold":return stats.m>=20000&&!st.scamLoss;
 case "scamfollow":return st.scamLoss;
 case "childwedding":case "grandchild":case "childdebt":return !!childFor(e,st);
 case "childrepair":return st.childConflict;
-case "wealthheirs":return st.children.length>=1&&(stats.m+stats.assets>=200000)&&adultChildren(st,a).length>0&&!st.heirConflict;
-case "heirrepair":return st.heirConflict;
+case "wealthheirs":return st.children.length>=2&&(stats.m+stats.assets>=200000)&&adultChildren(st,a).length>0&&!st.heirConflict;
+case "heirrepair":return st.heirConflict&&st.children.length>=2;
 case "carepaid":return stats.m>=18000&&!st.paidCare;
 case "nocare":return !st.paidCare&&(stats.physical<65||stats.h<45);
 case "healthcare":return stats.physical<70;
@@ -37,7 +37,7 @@ function addChild(st,age){const names=["ต้น","ข้าวหอม","ภ�
 function after(st,old,e,n,item){if(st.parent==="มีลูก"&&!st.children.length)addChild(st,st.parentSince??item.age);if(!e.later)return;const a=item.age,act=item.laterAction??e.choices[n]?.action;if(e.later==="loss"){st.parentsLost[e.parentKey]=a;return}if(!act)return;if(e.later==="morechild"){if(act==="addChild")addChild(st,a);if(act==="noMore")st.noMoreChildren=true;return}const ch=childFor(e,st);switch(act){
 case "team":st.projectTeam=true;st.leadRole="หัวหน้า";break;case "projectTrouble":st.projectTrouble=true;break;case "clearProject":st.projectTrouble=false;break;
 case "smallBiz":case "largeBiz":st.lateBusiness=act==="smallBiz"?1:2;st.bizTrouble=false;break;case "growBiz":st.lateBusiness=Math.min(4,st.lateBusiness+1);break;case "bizTrouble":st.bizTrouble=true;break;case "clearBiz":st.bizTrouble=false;st.lateBusiness=Math.max(1,st.lateBusiness-1);break;case "sellBiz":st.lateBusiness=0;st.bizTrouble=false;break;
-case "keepWork":if(st.lateWork==="retired"){st.mode=st.profession?"งานประจำ":"อิสระ";st.everWorked="ใช่"}st.lateWork="";break;case "partWork":if(!working(st)){st.mode=st.profession?"งานประจำ":"อิสระ";st.everWorked="ใช่"}st.lateWork="part";break;case "retireNow":st.mode="พักที่บ้าน";st.lateWork="retired";break;
+case "keepWork":if(st.lateWork==="retired"||!working(st)){st.mode=st.profession?"งานประจำ":"อิสระ";st.everWorked="ใช่"}st.lateWork="";break;case "partWork":if(!working(st)){st.mode=st.profession?"งานประจำ":"อิสระ";st.everWorked="ใช่"}st.lateWork="part";break;case "retireNow":st.mode="พักที่บ้าน";st.lateWork="retired";break;
 case "joinClub":st.clubMember=true;break;case "clubLead":st.clubLeader=true;break;case "scamLoss":st.scamLoss=true;break;case "clearScam":st.scamLoss=false;break;
 case "childMarry":if(ch)ch.married=true;break;case "grandAdd":case "grandConflict":if(ch){ch.grand++;st.grandchildren++;}if(act==="grandConflict")st.childConflict=true;break;case "childConflict":st.childConflict=true;break;case "clearChild":st.childConflict=false;break;
 case "estatePlan":st.estatePlan=true;break;case "heirConflict":st.heirConflict=true;break;case "clearHeir":st.heirConflict=false;break;
