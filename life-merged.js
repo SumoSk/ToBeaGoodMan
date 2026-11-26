@@ -1,5 +1,5 @@
 window.LIFE_MERGED=(()=>{
-const details=[...window.CAREER_DETAIL,...(window.CAREER_EXTRA||[]).map(x=>({job:x.id,title:"เรื่องต่อมาของ"+x.name,story:x.second,choices:x.secondChoices.map((c,i)=>({...c,set:i===2?{detailFlag:"conflict"}:{}}))}))], catalog=window.CAREER_WORLD.by;
+const details=[...window.CAREER_DETAIL,...(window.CAREER_EXTRA||[]).map(x=>({job:x.id,title:"เรื่องต่อมาของ"+x.name,story:x.second,choices:x.secondChoices.map((c,i)=>({...c,set:c.set||(i===2?{detailFlag:"conflict"}:{})}))}))], catalog=window.CAREER_WORLD.by;
 const c=(label,result,delta,set)=>({label,result,delta,set});
 const initial={detailFlag:"",detailSource:"",detailAge:-1,partnerJob:"",partnerIdentity:"",partnerSince:-1,partnerJobAge:-1,partnerJobHistory:[],hobbyId:"",hobbyAim:"",hobbyXP:0,hobbyMenu:"",hobbyStart:-1,hobbyPractice:-1,professionSince:-1};
 const hobbies=[
@@ -41,12 +41,13 @@ const partnerJobs=[
 ["care","ดูแลครอบครัว","บ้าน","งานดูแลคนในบ้านที่ไม่มีเวลาสิ้นสุดแน่นอน"],
 ["retired","เกษียณแล้ว","พัก","กิจวัตรและเวลาพักที่ต่างจากคนทำงาน"]
 ].map(([id,name,kind,burden])=>({id,name,kind,burden}));
+const legacyPartnerJobs=partnerJobs.slice();
 for(const x of window.CAREER_EXTRA||[])partnerJobs.push({id:x.id,name:x.name,kind:x.kind,burden:x.burden});
 const jobs=Object.fromEntries(partnerJobs.map(j=>[j.id,j]));
 const partnered=s=>["คบกัน","อยู่ด้วยกัน"].includes(s.relationship);
 const working=s=>["งานประจำ","อิสระ","ธุรกิจ","งานประจำควบธุรกิจ"].includes(s.mode);
 const hash=t=>Array.from(t).reduce((n,ch)=>((n*31+ch.codePointAt(0))>>>0),2166136261);
-function jobFor(name,age){const pool=age<20?["student"]:age<23?["student","office","chef","photo","music","mechanic","logistics","farmer","actor"]:age<25?partnerJobs.filter(j=>!["judge","doctor","dent","pharm","retired"].includes(j.id)).map(j=>j.id):age<35?partnerJobs.filter(j=>!["judge","retired"].includes(j.id)).map(j=>j.id):age<60?partnerJobs.filter(j=>j.id!=="retired").map(j=>j.id):["retired","care","owner","farmer","photo","music","teacher","office"];const eligible=pool.filter(id=>!catalog[id]||age>=18+catalog[id].years);const stable=eligible.filter(id=>!(window.CAREER_EXTRA||[]).some(x=>x.id===id));const newPool=eligible.filter(id=>(window.CAREER_EXTRA||[]).some(x=>x.id===id));const code=hash(name+"|"+age);return (newPool.length&&code%3===0?newPool[code%newPool.length]:stable[code%stable.length])||"student"}
+function jobFor(name,age,expanded=false){const list=expanded?partnerJobs:legacyPartnerJobs;const pool=age<20?["student"]:age<23?["student","office","chef","photo","music","mechanic","logistics","farmer","actor"]:age<25?list.filter(j=>!["judge","doctor","dent","pharm","retired"].includes(j.id)).map(j=>j.id):age<35?list.filter(j=>!["judge","retired"].includes(j.id)).map(j=>j.id):age<60?list.filter(j=>j.id!=="retired").map(j=>j.id):expanded?list.filter(j=>!["student","pilot","footballer","boxer"].includes(j.id)).map(j=>j.id):["retired","care","owner","farmer","photo","music","teacher","office"];const eligible=expanded?pool.filter(id=>!catalog[id]||age>=18+catalog[id].years):pool;return eligible[hash(name+"|"+age)%eligible.length]||"student"}
 function beforeAge(s,prefix){return s.history.findLast(x=>x.id.startsWith(prefix))?.age??-100}
 function first(s,prefix){return !s.history.some(x=>x.id.startsWith(prefix))}
 function add(id,age,order,title,story,merge,choices,extra={}){window.STORY.push({id,age,order,title,story,merge,choices,custom:true,...extra})}
@@ -68,8 +69,8 @@ function after(st,old,e,n,choice,item){const a=item.age;
 if(st.profession&&st.profession!==old.profession)st.professionSince=a;
 if(!st.profession)st.professionSince=-1;
 if(!partnered(st)){st.partnerJob="";st.partnerIdentity="";st.partnerSince=-1;st.partnerJobAge=-1}
-else {const identity=st.partnerName||old.partnerIdentity||"คนรัก";if(!partnered(old)||!st.partnerJob||st.partnerIdentity!==identity){st.partnerIdentity=identity;st.partnerJob=jobFor(identity,a);st.partnerSince=a;st.partnerJobAge=-1;st.partnerJobHistory.push({name:identity,job:st.partnerJob,age:a})}}
-if(["detail","pair"].includes(e.merge)&&choice.set?.detailFlag){st.detailSource=e.title;st.detailAge=a;}
+else {const identity=st.partnerName||old.partnerIdentity||"คนรัก";if(!partnered(old)||!st.partnerJob||st.partnerIdentity!==identity){st.partnerIdentity=identity;st.partnerJob=jobFor(identity,a,item.careerEra>=16);st.partnerSince=a;st.partnerJobAge=-1;st.partnerJobHistory.push({name:identity,job:st.partnerJob,age:a})}}
+if((["detail","pair"].includes(e.merge)||e.cw==="case")&&choice.set?.detailFlag){st.detailSource=e.title;st.detailAge=a;}
 if(e.merge==="hobbyPick"){st.hobbyXP=0;st.hobbyStart=a;st.hobbyPractice=a;st.hobby=hb[st.hobbyId].name}
 if(e.merge==="hobbyPractice"){st.hobbyPractice=a;if(n!==3)st.hobbyXP+=n===1?2:1}
 if(e.merge==="hobbyCareer"&&n===0){const h=hb[st.hobbyId];if(h?.career){st.careerPlan=h.career;st.careerPhase="waiting";st.careerMenu=""}}
