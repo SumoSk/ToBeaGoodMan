@@ -13,6 +13,8 @@ const document={getElementById:()=>element(),createElement:tag=>({...element(),t
 const storage={data:{},getItem(k){return this.data[k]??null},setItem(k,v){this.data[k]=v}};
 const api=new Function("window","document","localStorage","confirm",inline+`\nreturn {events,begin,choose,restore,lifeState,gameChoices,storyFor,allowed,takeFree,get:()=>s};`)(w,document,storage,()=>true);
 const seen = new Set(), ids=new Map(api.events.map((e,i)=>[e.id,i]));
+assert(w.LIFE_QUALITY.optionalIds.length===140,"quality gate absent");
+const selected=new Set(w.LIFE_QUALITY.optionalIds);assert(selected.size===140);for(const id of selected)assert(ids.has(id),"removed saved event "+id);
 assert.equal(ids.size,api.events.length,"duplicate IDs");
 for (const [i,e] of api.events.entries()){
  assert(e.title&&e.story&&e.choices.length,"empty scene "+e.id);
@@ -35,14 +37,14 @@ for(let run=0;run<12;run++){
   assert(e.age>=lastAge,"time moved backwards");lastAge=e.age;
   const body=api.storyFor(e);assert(!/\{(?:partner|candidate|my|job|hobby|source|newName|ageContext|activity|career|burden)\}/.test(body),"unresolved story variable "+e.id);
   const cs=api.gameChoices(e,state);assert(cs.length>0);
-  if(run===0&&e.id==="free_focus_5"){const a=w.LIFE_FREEDOM.activities(state,s,e.age)[0];if(a){api.takeFree(a);api.restore();assert.equal(api.lifeState().freeUsed,1);s=api.get();e=api.events[s.at];state=api.lifeState();}}
+  if(run===0&&e.age===5&&!s.history.some(x=>x.free?.key&&x.age===5)){const a=w.LIFE_FREEDOM.activities(state,s,e.age)[0];if(a){api.takeFree(a);api.restore();assert.equal(api.lifeState().freeUsed,1);s=api.get();e=api.events[s.at];state=api.lifeState();}}
   const choices=api.gameChoices(e,state),n=run===0?0:run===1?choices.length-1:Math.floor(rand()*choices.length);
   seen.add(e.id);api.choose(e,n);
   assert(api.get().history.some(x=>x.id===e.id),"choice did not save "+e.id);
   for(const [k,v] of Object.entries(api.get().stats))assert(Number.isFinite(v),"nonfinite "+k);
   if(steps===10||steps===100){const old=api.get(),history=JSON.stringify(old.history),stats=JSON.stringify(old.stats);api.restore();assert.equal(JSON.stringify(api.get().history),history);assert.equal(JSON.stringify(api.get().stats),stats);}
  }
- const s=api.get();assert(Number.isInteger(s.finishedAge));if(run<8){assert.equal(s.finishedAge,100);for(let a=5;a<100;a++)assert(s.history.some(x=>x.id==="year_"+a+"_0")&&s.history.some(x=>x.id==="year_"+a+"_1"),"missing annual roots "+a);}
+ const s=api.get();assert(Number.isInteger(s.finishedAge));if(run<8){assert.equal(s.finishedAge,100);assert.equal(s.checkedAge,99,"annual health checks skipped");assert.equal(s.paidAge,99,"annual income checks skipped");for(const item of s.history)assert(!w.LIFE_QUALITY.optionalIds.includes(item.id),"optional scene forced "+item.id);}
  results.push({run,age:s.finishedAge,decisions:steps,death:s.death?.cause||null});
 }
 console.log(JSON.stringify({scripts:scripts.length,events:api.events.length,uniqueVisited:seen.size,results},null,2));
