@@ -124,6 +124,8 @@ async function guard(){
  const brand=document.querySelector(".brand");if(brand){brand.setAttribute("role","button");brand.tabIndex=0;}
 }
 async function player(getSave,applySave){
+ throw Error("ระบบบัญชีผู้เล่น Cloud ยังไม่เปิดใช้งาน");
+
  if(!(await session("player"))){loginDialog("player",()=>player(getSave,applySave));return}
  const m=modal("บัญชีและเซฟเกม Cloud");
  async function draw(){
