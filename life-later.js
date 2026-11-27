@@ -520,7 +520,7 @@ for(let a=60;a<=99;a++)for(const [k,order,title,story] of templates)S.push({id:`
 const key=x=>x.name+"@"+x.born;
 const clamp=x=>Math.max(0,Math.min(100,x));
 const hash=s=>Array.from(s).reduce((a,x)=>(Math.imul(a,31)+x.charCodeAt(0))>>>0,17);
-const get=(st,x)=>st.elChildren?.[key(x)]||{bond:50,trust:50,life:["งานประจำ","งานอิสระ","กิจการ","ดูแลครอบครัว"][hash(key(x))%4],busy:hash(key(x)+"busy")%3,visits:0,expectation:0};
+const get=(st,x)=>st.elChildren?.[key(x)]||{bond:50,trust:50,life:["งานประจำ","งานอิสระ","กิจการ","ดูแลครอบครัว"][hash(key(x))%4],busy:hash(key(x)+"busy")%3,finance:35+hash(key(x)+"finance")%46,visits:0,expectation:0};
 const adults=(st,a)=>st.children.filter(x=>a-x.born>=20);
 const pick=(st,a,filter=()=>true)=>{const v=adults(st,a).filter(filter);return v.length?v[a%v.length]:null;};
 const find=(st,id)=>st.children.find(x=>key(x)===id);
@@ -532,9 +532,10 @@ const due=(s,k,a,n)=>!last(s,k)||a-last(s,k).age>=n;
 const dead=(st,n)=>!!n&&Object.hasOwn(st.elDeadPartners||{},n);
 const friend=(st,a)=>{const v=Object.keys(st.people||{}).filter(n=>n!==st.partnerName&&!dead(st,n)&&P.privateOK(st,n)&&st.people[n].feeling==="รู้สึกดี");return v.length?v[a%v.length]:"";};
 const support=(st,x)=>{const q=get(st,x);return q.bond+q.trust-q.busy*14-q.expectation*4;};
+const childFin=q=>(q.finance??50)<35?"ช่วงนี้เงินของเขาตึงมือ":(q.finance??50)>=70?"ตอนนี้ฐานะของเขาค่อนข้างมั่นคง":"เขายังต้องบริหารรายจ่ายของตัวเอง";
 const caregiver=(st,a)=>adults(st,a).slice().sort((x,y)=>support(st,y)-support(st,x))[0];
 const oldChildFor=(e,st)=>{let v=adults(st,e.age);if(e.later==="childwedding")v=v.filter(x=>!x.married);if(e.later==="grandchild")v=v.filter(x=>x.married&&x.grand<3&&e.age-(x.lastGrand??-100)>=4).sort((x,y)=>x.grand-y.grand);if(["childdebt","childsuccess"].includes(e.later))return v[e.age%Math.max(1,v.length)];if(e.later==="grandstudy")v=v.filter(x=>x.grand&&e.age-(x.firstGrand??e.age)>=6);return v[0];};
-const change=(st,x,d,tag,age)=>{if(!x)return;const id=key(x),p=get(st,x);st.elChildren={...(st.elChildren||{}),[id]:{...p,bond:clamp(p.bond+(d.bond||0)),trust:clamp(p.trust+(d.trust||0)),expectation:Math.max(0,Math.min(10,p.expectation+(d.expectation||0))),visits:p.visits+(d.visits||0),last:tag,lastAge:age}};};
+const change=(st,x,d,tag,age)=>{if(!x)return;const id=key(x),p=get(st,x);st.elChildren={...(st.elChildren||{}),[id]:{...p,bond:clamp(p.bond+(d.bond||0)),trust:clamp(p.trust+(d.trust||0)),finance:clamp((p.finance??50)+(d.finance||0)),expectation:Math.max(0,Math.min(10,p.expectation+(d.expectation||0))),visits:p.visits+(d.visits||0),last:tag,lastAge:age}};};
 const childEffect=(x,bond,trust=0,expectation=0,visits=0)=>({elEffect:{id:key(x),bond,trust,expectation,visits}});
 const financiallyReady=(st,t)=>t.m+t.savings+t.assets>=200000;
 const bereaveDue=(st,s,a)=>{if(!currentPartner(st)||dead(st,st.partnerName)||a<65||a-(st.partnerSince??a)<2)return false;const age=65+hash(st.partnerName+"@"+(st.partnerSince??0)+"@"+(s.seed??0))%35;return a>=age;};
@@ -579,7 +580,7 @@ W.story=(e,st)=>{
  if(e.cw!=="elderx")return prev.story(e,st);
  const a=e.age;
  switch(e.elderx){
- case "childvisit":{const x=pick(st,a),q=get(st,x);return x.name+" อายุ "+(a-x.born)+" ปี ใช้ชีวิตในรูปแบบ"+q.life+" "+(q.bond<40?"ช่วงที่ผ่านมาเขาเว้นระยะจากคุณและวันนี้อยากคุยเรื่องที่ค้างใจ":q.busy===2?"เขามีภาระของตัวเองมาก แต่ติดต่อมาหาเมื่อมีเวลา":"เขาอยากแวะมาคุยและใช้เวลาด้วยกัน")+" คุณอยากตอบรับอย่างไร";}
+ case "childvisit":{const x=pick(st,a),q=get(st,x);return x.name+" อายุ "+(a-x.born)+" ปี ใช้ชีวิตในรูปแบบ"+q.life+" "+(q.bond<40?"ช่วงที่ผ่านมาเขาเว้นระยะจากคุณและวันนี้อยากคุยเรื่องที่ค้างใจ":q.busy===2?"เขามีภาระของตัวเองมาก แต่ติดต่อมาหาเมื่อมีเวลา":"เขาอยากแวะมาคุยและใช้เวลาด้วยกัน")+" "+childFin(q)+" คุณอยากตอบรับอย่างไร";}
  case "childfollow":{const x=find(st,st.elChildTarget);return x.name+" จำเรื่องเมื่อคุณอายุ "+st.elChildAge+" ปีได้ "+(st.elChildIssue==="distance"?"เขายังรู้สึกว่าคุยกับคุณได้ไม่เต็มที่":"เขาอยากรักษาความสัมพันธ์และคุยเรื่องชีวิตของตน")+" คุณจะรับฟังอย่างไร";}
  case "grand":{const x=pick(st,a,z=>z.grand&&a-(z.firstGrand??a)>=6);return "หลานคนหนึ่งในครอบครัวของ"+x.name+" อยากเล่าเรื่องความสนใจและชีวิตของเขาให้คุณฟัง ไม่จำเป็นต้องเลือกเส้นทางเดียวกับคุณ";}
  case "careplan":{const x=caregiver(st,a);return "สุขภาพหรือพลังงานช่วงนี้ทำให้บางกิจวัตรยากขึ้น "+(x?x.name+" เป็นลูกที่คุณอาจขอคุยเรื่องความช่วยเหลือได้ แต่เขามีภาระและขอบเขตของตัวเอง":"คุณยังสามารถหาความช่วยเหลือจากคนที่ไว้ใจ ชุมชน หรือบริการได้ แม้ไม่มีลูก")+" คุณอยากวางแผนแบบไหน";}
@@ -614,9 +615,9 @@ W.choices=(e,st,s)=>{
  c("เล่าเรื่องชีวิตของคุณเมื่อวัยใกล้กัน","ครอบครัวได้แลกเปลี่ยนประสบการณ์",{h:3,experience:2},childEffect(x,2,2)),
  c("พยายามให้หลานเลือกตามที่คุณคิดไว้","เกิดความเห็นต่างกับครอบครัวของลูก",{child:-3,stress:2},childEffect(x,-4,-3)),
  c("สนับสนุนตามกำลังโดยไม่กำหนดอนาคตแทน","คุณรักษาขอบเขตของแต่ละรุ่น",{e:3,child:2},childEffect(x,3,2))];}
- case "careplan":{const x=caregiver(st,a),q=x?get(st,x):null,can=x&&support(st,x)>=75;return [
+ case "careplan":{const x=caregiver(st,a),can=x&&support(st,x)>=75;return [
  x?c("ถาม "+x.name+" ว่าช่วยอะไรได้จริง",can?"ลูกตกลงช่วยตามเวลาที่มี ไม่ได้ต้องรับภาระทั้งหมด":"ลูกยังไม่พร้อมรับภาระมาก คุณต้องจัดทางเลือกอื่น",can?{energy:6,child:3,h:3}:{problem:3,h:-1},{elCare:can?"family":"community",elCareAge:a,elCareChild:key(x),...childEffect(x,can?3:1,2)}):c("ติดต่อชุมชนเพื่อขอข้อมูลช่วยเหลือ","คุณเริ่มหาทางเลือกที่เหมาะกับชีวิต",{network:3,problem:3},{elCare:"community",elCareAge:a}),
- t.m>=18000?c("จ้างผู้ช่วยบางเวลาตามงบ 18,000 บาท","เริ่มบริการช่วยดูแลและมีค่าใช้จ่ายต่อเนื่อง",{m:-18000,energy:6,h:3},{paidCare:1,careStart:a,elCare:"paid",elCareAge:a}):c("สำรวจบริการที่จ่ายไหว","ยังไม่ได้จ้างและรักษาเงินสำรองไว้",{problem:4},{elCare:"community",elCareAge:a}),
+ st.paidCare?c("ทบทวนบริการผู้ช่วยที่จ้างอยู่แล้ว","คุณใช้บริการเดิมโดยไม่จ่ายค่าจ้างเริ่มต้นซ้ำ",{problem:3,energy:2},{elCare:"paid",elCareAge:a,elCareChild:""}):t.m>=18000?c("จ้างผู้ช่วยบางเวลาตามงบ 18,000 บาท","เริ่มบริการช่วยดูแลและมีค่าใช้จ่ายต่อเนื่อง",{m:-18000,energy:6,h:3},{paidCare:1,careStart:a,elCare:"paid",elCareAge:a,elCareChild:""}):c("สำรวจบริการที่จ่ายไหว","ยังไม่ได้จ้างและรักษาเงินสำรองไว้",{problem:4},{elCare:"community",elCareAge:a,elCareChild:""}),
  c("ปรับบ้านและกิจวัตรตามกำลัง","คุณลดภาระและยังใช้ชีวิตได้ด้วยตัวเองตามความพร้อม",{problem:4,energy:3},{elCare:"self",elCareAge:a}),
  c("ยังไม่อยากขอความช่วยเหลือ","ภาระเดิมยังอยู่และอาจต้องทบทวนอีก",{energy:-4,stress:3},{elCare:"self",elCareAge:a})];}
  case "carefollow":{const x=find(st,st.elCareChild);return [
@@ -705,10 +706,9 @@ L.after=(st,old,e,n,item)=>{
  const childArc=["childwedding","grandchild","childdebt","childsuccess","grandstudy"].includes(e.later),x=childArc?oldChildFor(e,st):null;
  prev.laterAfter(st,old,e,n,item);
  // Child creation is handled by the original module. Profiles are derived lazily and replayed from history.
- if(x){const negative=n===2&&["childwedding","grandchild","childdebt"].includes(e.later);change(st,x,{bond:negative?-5:3,trust:negative?-4:2,expectation:e.later==="childdebt"&&n===2?2:0},item.title,item.age);}
+ if(x){const negative=n===2&&["childwedding","grandchild","childdebt"].includes(e.later);const finance=e.later==="childsuccess"?8:e.later==="childdebt"?(n===0?3:n===2?5:-7):0;change(st,x,{bond:negative?-5:3,trust:negative?-4:2,finance,expectation:e.later==="childdebt"&&n===2?2:0},item.title,item.age);}
  if(e.later==="careconflict"&&item.laterAction==="loseCare"&&st.elCare==="paid")st.elCare="";
  if(e.cw==="elderx"&&e.elderx==="bereave"&&st.people[st.elLostName])st.people[st.elLostName]={...st.people[st.elLostName],feeling:"เสียชีวิต",boundary:"ไม่ติดต่อ"};
 };
-L.annual=(st,a)=>prev.annual(st,a);
 w.ELDER={childProfile:get,childKey:key,caregiver,support,dead};
 })(window);
