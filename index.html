@@ -106,7 +106,7 @@ q("ไม่รับข้อเสนอและชวนขิงเล่�
 q("ขอให้พีทเลิกกีดกันขิง","พีทไม่ให้ยืมของเล่น แต่ยอมเลิกกันขิงออกจากกลุ่ม",{problem:4,social:3,fair:3},p("พีท")),
 q("ตกลงและไม่ชวนขิง","คุณได้เล่นของที่อยากได้ ขิงเสียใจและเริ่มตีตัวออกห่าง",{h:4,fair:-6,friend:-3},{...p("พีท"),exclude:"ขิง"}),
 q("เดินออกมา ไม่เข้าข้างใคร","คุณไม่ได้เล่นของพีท และขิงต้องจัดการเรื่องนี้เอง",{energy:2,confidence:-1},{}),
-q("★ ชวนทุกคนผลัดกันเล่น","พีทยอมให้ทุกคนเล่นเป็นรอบ ขิงได้ร่วมเล่นด้วย",{social:5,problem:4,friend:5,fair:3},p("ขิง"),s=>T(s,"social")>=65&&T(s,"problem")>=60)],st=>known(st,"พีท")||known(st,"ขิง")||known(st,"ข้าวปั้น"),"circle");
+q("★ ชวนทุกคนผลัดกันเล่น","พีทยอมให้ทุกคนเล่นเป็นรอบ ขิงได้ร่วมเล่นด้วย",{social:5,problem:4,friend:5,fair:3},p("ขิง"),s=>T(s,"social")>=65&&T(s,"problem")>=60)],st=>["พีท","ขิง","ข้าวปั้น"].some(n=>known(st,SOCIAL_CONTEXT.schoolPerson(st,n))),"circle");
 // 9 years: science and art, with awards and genuinely difficult choices.
 add("science",9,10,"ครูเปิดรับตัวแทนประกวดสิ่งประดิษฐ์","ครูประกาศประกวดสิ่งประดิษฐ์ รางวัลทีมชนะ 2,000 บาท นัทชวนคุณทำเครื่องเตือนน้ำล้น มีเวลาเตรียมหนึ่งเดือน",[
 q("สมัครประกวดกับนัท","ทั้งคู่แบ่งงานและนัดทดลองต้นแบบ",{knowledge:6,problem:5,friend:3},j("science","นัท")),
@@ -177,7 +177,7 @@ q("กีฬาและสุขภาพ","คุณตั้งใจดู�
 q("เกม ศิลปะ และงานสร้างสรรค์","คุณให้เวลากับงานอดิเรกและไอเดียใหม่ๆ",{creative:5,problem:3},{interest:"art"}),
 q("เพื่อน กิจกรรม และการหาเงิน","คุณอยากรู้จักคนใหม่และลองหาโอกาสด้วยตัวเอง",{social:4,skill:4},{interest:"social"})]);
 // Later-life branch compatibility: existing gates and historical choices remain valid.
-const guestNames=st=>Object.keys(st.people||{}).filter(n=>!SOCIAL_CONTEXT.remote(st,n)&&["เมฆ","ฟ้า","นัท","ข้าวปั้น","ดิน","มินนี่","เจ","บอล","ขิง","พีท","ใบหม่อน","โจ๊ก"].includes(n)&&known(st,n));
+const guestNames=st=>Object.keys(st.people||{}).filter(n=>!SOCIAL_CONTEXT.remote(st,n)&&["เมฆ","ฟ้า","นัท","ข้าวปั้น","ดิน","มินนี่","เจ","บอล","ขิง","พีท","ใบหม่อน","โจ๊ก",...SOCIAL_CONTEXT.schoolNames(st)].includes(n)&&known(st,n));
 const guest=by.get("familykid_friendhome");if(guest)while(guest.choices.length<13)guest.choices.push({label:"ชวนเพื่อน",result:"",delta:{},set:{}});
 const legacyFollow={kid_giftplay:"kid_birthday",kid_readshow:"kid_reading",kid_sportpractice:"kid_sports",kid_sportday:"kid_sportpractice",kid_hwresult:"kid_homework",kid_family7:"kid_family6",kid_saved9:"kid_saving",kid_contest9:"kid_class8",kid_contest10:"kid_contest9",authored_plant_1_10:"authored_plant_0_9",youthdistinct_move_1:"youthdistinct_move_0",youthdistinct_kite_1:"youthdistinct_kite_0"};
 const prizes={child30_sport_result:sportPrize,child30_games_result:gamePrize,child30_art_result:artPrize,child30_scholar_result:scholarship};
@@ -198,8 +198,8 @@ function person(st,n,level){if(!n)return;st.people[n]={...(st.people[n]||{}),fee
 W.after=(st,old,e,n,ch,item)=>{prev.after(st,old,e,n,ch,item);if(e.cw!=="child30")return;const a=item.careerSet||ch.set||{},v={...H(old)},ints=new Set(v.interests||[]);for(const [k,x] of Object.entries(a))if(!["person","level","interest","exclude"].includes(k))v[k]=x;
  if(a.interest)ints.add(a.interest);if(a.person){person(st,a.person,a.level);v.lastPerson=a.person;}if(e.id==="child30_friends"&&["นัท","ข้าวปั้น"].includes(a.person))st.kidPal=a.person;if(a.exclude)person(st,a.exclude,"distant");v.interests=[...ints];st.child30=v;
  if(a.interest==="study"&&!st.schoolLike)st.schoolLike="หนังสือ";if(a.interest==="sport"&&!st.schoolLike)st.schoolLike="กีฬา";if(a.interest==="art"&&!st.schoolLike)st.schoolLike="สร้างสรรค์";
- if(e.id==="child30_games_result"&&!v.gameStop){st.vy_games_step=1;st.vy_games_status=v.gameRisk?"heavy":"casual";}
- if(e.id==="child30_sport_result"&&!v.sportStop){st.vy_sports_step=1;st.vy_sports_status="practice";}
+ if(e.id==="child30_games_result"&&!v.gameStop&&!SOCIAL_CONTEXT.remote(st,"บอล")){st.vy_games_step=1;st.vy_games_status=v.gameRisk?"heavy":"casual";}
+ if(e.id==="child30_sport_result"&&!v.sportStop&&!SOCIAL_CONTEXT.remote(st,"เจ")){st.vy_sports_step=1;st.vy_sports_status="practice";}
  const bad=(e.id==="child30_market_cash"&&n>=2||e.id==="child30_homework"&&n===2||e.id==="child30_circle_test"&&n===2||e.id==="child30_science_money"&&n===2||e.id==="child30_leader_cash"&&n===2);if(bad){st.fkConduct=Math.min(20,(st.fkConduct||0)+2);st.fkIncidents=(st.fkIncidents||0)+1;}
 };
 w.CHILDHOOD30={defs:D,quiet,story(e,st,s){const x=D.get(e.id).story;return typeof x==="function"?x(st,s):x},guestNames};
@@ -288,6 +288,7 @@ const STORY_FLOW=(()=>{
 // Social context: knowing a person is not the same as sharing a school or workplace.
 // Rebuilt from saved history; names and relationship keys are never rewritten.
 const SOCIAL_CONTEXT=(()=>{
+ const schoolAlternatives={นัท:"ภีม",ข้าวปั้น:"ภูผา",มินนี่:"ไอริณ",ขิง:"ข้าวฟ่าง",เจ:"ปุณณ์",บอล:"วิน",พีท:"ไท",ใบหม่อน:"ต้นหลิว",โจ๊ก:"อั๋น"};
  const localSchool=new Set(["snack","bully","exam","group","group_a","dog_a","team_b","fahhelp","fahhurt","drawing_a"]);
  const schoolFah=new Set(["snack","bully","exam","dog_a","team_b","fahhelp","fahhurt","drawing_a"]);
  const schoolMek=new Set(["group","group_a"]);
@@ -298,6 +299,10 @@ const SOCIAL_CONTEXT=(()=>{
  const C=st=>st.socialContext||{remote:[],workEpoch:0,team:[],clientEpoch:null,schoolEpoch:0,location:"",locationKnown:false,needsIntro:false};
  const remote=(st,n)=>!!n&&C(st).remote.includes(n);
  const knows=(st,n)=>!!st.people?.[n];
+ const schoolPerson=(st,n)=>remote(st,n)&&schoolAlternatives[n]?schoolAlternatives[n]:n;
+ const schoolNames=(st)=>[...Object.values(schoolAlternatives)];
+ const childNames={friends:["นัท","ข้าวปั้น","มินนี่"],friends_day:["ขิง"],market:["มินนี่"],sport:["เจ"],sport_match:["เจ"],games:["บอล"],games_match:["บอล"],games_result:["บอล"],circle:["ข้าวปั้น","ขิง","พีท"],circle_test:["พีท","ขิง"],science:["นัท"],science_build:["นัท"],science_result:["นัท"],science_money:["นัท"],science_truth:["นัท"],art:["ใบหม่อน"],art_result:["ใบหม่อน"],leader:["ข้าวปั้น","พีท"],leader_cash:["พีท"],leader_check:["พีท"]};
+ function schoolText(e,st,text){if(e.cw!=="child30"||typeof text!=="string")return text;for(const name of childNames[e.id.slice(8)]||[]){const n=schoolPerson(st,name);if(n===name)continue;const pattern=name==="เจ"?/เจ(?!อ|รจา|็บ|าะ|ริญ|็ด|้า)/g:name==="บอล"?/บอล(?!ลูน)/g:new RegExp(name,"g");text=text.replace(pattern,n);}return text;}
  const moved=s=>[0,1,2].includes(s.answers.movehome);
  const currentFah=(st,s)=>!moved(s)&&knows(st,"ฟ้า")&&!remote(st,"ฟ้า");
  const currentMek=(st,s)=>!moved(s)&&knows(st,"เมฆ")&&!remote(st,"เมฆ");
@@ -321,7 +326,7 @@ const SOCIAL_CONTEXT=(()=>{
   if(e.cw==="child30"&&q.person&&!knows(old,q.person))c.remote=c.remote.filter(x=>x!==q.person);
   const employed=employee(st),was=employee(old),active=working(st),wasActive=working(old);
   const explicit=id==="career_reset"||id==="switch1"&&n!==0||id==="work_entry"&&n===0||id==="promotion"&&n===0||e.cw==="workopportunity"&&q.accept==="employer"||id==="workcity"&&[0,1,2].includes(n)&&before.location&&before.location!==c.location;
-  const changed=explicit||was!==employed||wasActive!==active||!!old.profession&&old.profession!==st.profession||!!old.lateWork&&st.lateWork==="retired"&&old.lateWork!=="retired";
+  const changed=explicit||was!==employed||wasActive!==active||!!old.profession&&old.profession!==st.profession||e.cw==="entry"&&was&&old.profession!==st.profession||!!old.lateWork&&st.lateWork==="retired"&&old.lateWork!=="retired";
   if(changed){c.workEpoch++;c.team=[];c.clientEpoch=null;c.needsIntro=employed&&age>=24;st.knowPloy="";st.knowBoss="";st.knowMin="";st.clientRole="";if(explicit&&!(id==="promotion"&&n===0))st.leadRole="";if(old.mode&&old.mode!==st.mode&&!employed)st.leadRole="";}
   if(id==="work_people"&&employed){c.team=["พลอย","น้ำ"];c.needsIntro=false;c.remote=c.remote.filter(x=>!c.team.includes(x));}
   if(id==="lead_people"&&employed){if(!c.team.includes("มิน"))c.team.push("มิน");c.remote=c.remote.filter(x=>x!=="มิน");}
@@ -335,7 +340,10 @@ const SOCIAL_CONTEXT=(()=>{
   if(id==="apology"&&remote(st,"เมฆ"))return false;
   if(id.startsWith("kid_mek")&&remote(st,"เมฆ")||id.startsWith("kid_fah")&&remote(st,"ฟ้า")||id.startsWith("kid_pal")&&(!st.kidPal||remote(st,st.kidPal)))return false;
   if(id==="familykid_friendhome"&&!window.CHILDHOOD30.guestNames(st).some(n=>!remote(st,n)))return false;
-  if(id==="lead_people"&&(!employee(st)||st.leadRole!=="หัวหน้า"))return false;
+  if(id==="lead_people"&&(!employee(st)||st.leadRole!=="หัวหน้า"||c.workEpoch>1&&!c.team.includes("พลอย")&&!c.team.includes("น้ำ")))return false;
+  if(e.personIntro&&["พลอย","น้ำ","มิน"].includes(e.personIntro)&&!c.team.includes(e.personIntro))return false;
+  if(e.cw==="variedyouth"){const n={mischief:"โจ๊ก",games:"บอล",sports:"เจ",quiet:"ขิง",skip:"ตั้ม",activities:"แป้งหอม"}[e.vyKey];if(n&&remote(st,n))return false;}
+  if((id==="familyenv_club"||id==="familyenv_clubfriend")&&remote(st,"ใบหม่อน"))return false;
   if(workNames[id]&&(!employee(st)||!c.team.includes(workNames[id])))return false;
   if(clientEvents.has(id)&&(!working(st)||c.clientEpoch!==c.workEpoch))return false;
   if(id==="retirecall"&&!st.everWorked&&!s.history.some(x=>x.id==="work_people"||x.id==="work_entry"&&s.answers[x.id]===0))return false;
@@ -357,7 +365,7 @@ const SOCIAL_CONTEXT=(()=>{
  };
  function story(e,st,s){if(adapted(e,st,s))return generic[e.id];if(e.id==="moveschool"&&moved(s))return "ปีถัดมาที่โรงเรียนใหม่ เด็กข้างโต๊ะชื่อดินชวนคุณไปกินข้าวด้วย คุณอยากทำความรู้จักเขาอย่างไร?";return undefined;}
  function title(e,st,s){if(adapted(e,st,s)){return ({fahhelp:"เพื่อนที่ยื่นมือมาช่วย",fahhurt:"เพื่อนที่ยังไม่ไว้ใจ",group:"ชื่อในงานกลุ่ม",group_a:"งานกลุ่มที่ยังแก้ได้"})[e.id]||e.title;}return undefined;}
- function choices(e,st,s,base){if(!adapted(e,st,s))return base;const name=schoolMek.has(e.id)?"เมฆ":"ฟ้า";return base.map(c=>({...c,label:c.label.replaceAll(name,"เพื่อน"),result:c.result.replaceAll(name,"เพื่อน")}));}
+ function choices(e,st,s,base){if(e.cw==="child30")return base.map(c=>{const set={...c.set};for(const k of ["person","exclude"])if(set[k])set[k]=schoolPerson(st,set[k]);return {...c,label:schoolText(e,st,c.label),result:schoolText(e,st,c.result),set};});if(!adapted(e,st,s))return base;const name=schoolMek.has(e.id)?"เมฆ":"ฟ้า";return base.map(c=>({...c,label:c.label.replaceAll(name,"เพื่อน"),result:c.result.replaceAll(name,"เพื่อน")}));}
  const pairs=[["ภาคิน","ลลิตา"],["ธันวา","มุกดา"],["ภาสกร","รดา"],["อาชิระ","ณัฐชา"],["กวิน","อารยา"],["ธีร์","ลลิน"]];
  function teamNames(epoch){return pairs[Math.max(0,epoch-1)%pairs.length].map(n=>n+" (ทีม "+epoch+")");}
  const W=window.CAREER_WORLD,oldAllowed=W.allowed,oldChoices=W.choices;
@@ -371,9 +379,9 @@ const SOCIAL_CONTEXT=(()=>{
  ];};
  function workStory(e,st){const names=teamNames(C(st).workEpoch);return "คุณเริ่มทำงานในที่ใหม่ ได้รู้จัก "+names[0]+" และ "+names[1]+" สมาชิกทีมที่เพิ่งพบกัน คุณอยากเริ่มสร้างความสัมพันธ์กับทีมอย่างไร?";}
  const F=window.LIFE_FREEDOM,oldActivities=F.activities,oldContact=F.contact;
- F.activities=(st,s,age)=>oldActivities(st,s,age).map(a=>{const n=a.person||a.patch?.contact;if(!remote(st,n))return a;if(age<10&&a.patch?.childAction!=="mekRetry"){return {...a,title:"ขอผู้ใหญ่ช่วยโทรคุยกับ "+n,result:"ผู้ใหญ่ช่วยโทรหา "+n+" ทั้งคู่คุยกันจากคนละจังหวัด"};}return null;}).filter(Boolean);
+ F.activities=(st,s,age)=>oldActivities(st,s,age).map(a=>{const n=a.person||a.patch?.contact;if(!remote(st,n))return a;if(age<10&&(a.patch?.childAction==="mek"||a.patch?.contact&&/ชวน.*(?:เล่น|วาดรูป)/.test(a.title))){return {...a,title:"ขอผู้ใหญ่ช่วยโทรคุยกับ "+n,result:"ผู้ใหญ่ช่วยโทรหา "+n+" ทั้งคู่คุยกันจากคนละจังหวัด"};}return null;}).filter(Boolean);
  F.contact=(st,s,age,name,type)=>{if(remote(st,name)&&type==="invite")return null;return oldContact(st,s,age,name,type);};
- return {C,remote,moved,adapted,after,gate,peopleAllowed,story,title,choices,place,namedPlace,workStory,teamNames};
+ return {C,remote,moved,adapted,after,gate,peopleAllowed,story,title,choices,place,namedPlace,workStory,teamNames,schoolPerson,schoolNames,schoolText};
 })();
 
 function buildTimeline(base,episodes){const arranged=STORY_FLOW.organize(base,episodes);base=arranged.roots;episodes=arranged.episodes;const roots=base.slice().sort((a,b)=>a.age-b.age||(a.order||0)-(b.order||0)),out=[],children=new Map(),ids=new Set(roots.map(e=>e.id));for(const e of episodes){if(ids.has(e.id))throw Error("Duplicate story ID: "+e.id);ids.add(e.id);if(!children.has(e.after))children.set(e.after,[]);children.get(e.after).push(e)}function visit(e,age,arc,depth){out.push({...e,age,arc,depth});for(const child of children.get(e.id)||[])visit(child,age,arc,depth+1)}for(const e of roots)visit(e,e.age,e.title,0);if(out.length!==base.length+episodes.length)throw Error("Invalid episode connection");return out}
@@ -399,8 +407,8 @@ function importLife(){const input=document.createElement("input");input.type="fi
 
 // Display-only gender metadata. Never append labels to identity keys, saves or relationship state.
 const PERSON_GENDER=(()=>{
- const male=["ภาคิน","ธันวา","ภาสกร","อาชิระ","กวิน","ธีร์","กานต์","ตะวัน","นนท์","อาร์ต","แคน","เมฆ","นัท","ข้าวปั้น","ดิน","เจ","บอล","พีท","โจ๊ก","ตั้ม","ต้น","ภู"];
- const female=["ลลิตา","มุกดา","รดา","ณัฐชา","อารยา","ลลิน","เมษา","พิมพ์","บีม","แป้ง","ฟ้ารุ่ง","ฟ้า","มินนี่","ขิง","ใบหม่อน","แป้งหอม","มิว","พลอย","น้ำ","มิน","แพร","ออม","ครูแนน","มายด์","พิม","นารา","ริน","ใบเฟิร์น","อิง","จูน","เพลง","ป้าอ้อย","ข้าวหอม","นับดาว","ปลายฟ้า","ลิน","ขวัญ","แก้ม","บัว","ดาว","อัญ","เนย","ไหม","อาย","ปริม","มุก","แพต","ขิม","น้ำหวาน","จิ๊บ","สายฝน","อุ่น","อิงฟ้า","เดือน",...(window.WOMEN_STORIES?.profiles||[]).map(p=>p[1])];
+ const male=["ภีม","ภูผา","ปุณณ์","วิน","ไท","อั๋น","ภาคิน","ธันวา","ภาสกร","อาชิระ","กวิน","ธีร์","กานต์","ตะวัน","นนท์","อาร์ต","แคน","เมฆ","นัท","ข้าวปั้น","ดิน","เจ","บอล","พีท","โจ๊ก","ตั้ม","ต้น","ภู"];
+ const female=["ไอริณ","ข้าวฟ่าง","ต้นหลิว","ลลิตา","มุกดา","รดา","ณัฐชา","อารยา","ลลิน","เมษา","พิมพ์","บีม","แป้ง","ฟ้ารุ่ง","ฟ้า","มินนี่","ขิง","ใบหม่อน","แป้งหอม","มิว","พลอย","น้ำ","มิน","แพร","ออม","ครูแนน","มายด์","พิม","นารา","ริน","ใบเฟิร์น","อิง","จูน","เพลง","ป้าอ้อย","ข้าวหอม","นับดาว","ปลายฟ้า","ลิน","ขวัญ","แก้ม","บัว","ดาว","อัญ","เนย","ไหม","อาย","ปริม","มุก","แพต","ขิม","น้ำหวาน","จิ๊บ","สายฝน","อุ่น","อิงฟ้า","เดือน",...(window.WOMEN_STORIES?.profiles||[]).map(p=>p[1])];
  return Object.freeze(Object.fromEntries([...male.map(n=>[n,"ชาย"]),...female.map(n=>[n,"หญิง"])]));
 })();
 function personGender(name){if(typeof name!=="string")return "";const base=name.replace(/ \((?:คนที่พบเมื่ออายุ \d+ ปี|รู้จักเมื่ออายุ \d+|ทีม \d+)\)$/,"");return Object.hasOwn(PERSON_GENDER,base)?PERSON_GENDER[base]:"";}
@@ -513,7 +521,7 @@ const NARRATIVE=(()=>{
   if(["child","childtime","schoolfee","child_a","child_cross"].includes(e.id)&&(!st.children?.length&&st.parent!=="มีลูก"))return false;
   return true;
  }
- function title(e,st,s){const contextTitle=SOCIAL_CONTEXT.title(e,st,s);if(contextTitle!==undefined)return contextTitle;switch(e.id){
+ function title(e,st,s){const contextTitle=SOCIAL_CONTEXT.title(e,st,s);if(contextTitle!==undefined)return contextTitle;if(e.cw==="child30")return SOCIAL_CONTEXT.schoolText(e,st,e.title);switch(e.id){
   case "reunion":return conflict(s)?"คำขอโทษที่รอมานาน":"ข้อความจากคนที่เคยรู้จัก";
   case "reunion_a":return "เรื่องราวเมื่อหลายปีก่อน";
   case "loan_cross":return train(s)?"ความทรงจำเรื่องรถไฟกระดาษ":"เรื่องราวระหว่างคุณกับเมฆ";
@@ -580,7 +588,7 @@ if(["switch1","career_reset","office","raise","fired","bribe","employee","layoff
 if(["med2","nurse2","law2","police2","judge2","actor2","athlete2","teacher1","tech1","trade1","service1"].includes(e.id)&&state.mode==="ธุรกิจ")return false;
 if(["love_drama","love_drama2"].includes(e.id)&&["โสด","แยกทาง"].includes(state.relationship))return false;if(e.origin&&s.origin?.[e.origin[0]]!==e.origin[1])return false;if(e.after){const n=s.answers[e.after];if(!Number.isInteger(n)||(e.choiceGate&&!e.choiceGate.includes(n)))return false}return LIFE.eligible(e,s)}
 const callbacks={child:[["glass",[1],"คุณนึกถึงวันที่เคยโทษเมฆเรื่องแก้วแตก และสิ่งที่เกิดตามมา"],["glass",[0,3],"คุณนึกถึงวันที่แม่เคยฟังคุณยอมรับว่าเป็นคนทำแก้วแตก"]],return:[["school_b",[2],"ฟ้าเคยรู้สึกกลัวคุณจากเหตุการณ์บ้านตัวต่อพังในวัยเด็ก"],["school_b",[0,1,3],"คุณยังจำบ้านตัวต่อที่เคยสร้างกับฟ้าในห้องอนุบาล"]],reunion:[["betray_a",[0,1,2,3],"เรื่องเงินธุรกิจที่เคยคุยกันยังเป็นส่วนหนึ่งของความทรงจำของทั้งคู่"]],pub:[["campus_a",[0,1,2,3],"คุณจำแพรได้จากกลุ่มเพื่อนมหาวิทยาลัย"]],family:[["love1",[1,3],"หลังจากความสัมพันธ์เดิมสิ้นสุดลง คุณกำลังทบทวนชีวิตในแบบที่ต้องการ"]]};
-function storyFor(e){const socialStory=SOCIAL_CONTEXT.story(e,lifeState(),s);if(socialStory!==undefined)return socialStory;if(e.cw==='contextwork')return SOCIAL_CONTEXT.workStory(e,lifeState());if(e.cw==='child30')return window.CHILDHOOD30.story(e,lifeState(),s);const state=lifeState(),flowStory=STORY_FLOW.story(e,state,s),revised=NARRATIVE.story(e,state,s);const lead=[];if(e.id==="family"&&lifeState().parent==="มีลูก")lead.push("คุณมีลูกแล้ว และกำลังทบทวนว่าจะจัดชีวิตครอบครัวในช่วงต่อไปอย่างไร");if(e.id==="study_report"){const level=s.stats.knowledge>=18&&s.stats.discipline>=53?"ผลการเรียนโดดเด่นและมีความสม่ำเสมอ":s.stats.knowledge>=10&&s.stats.discipline>=45?"ผลการเรียนอยู่ในระดับที่ค่อยๆ พัฒนา":"ยังมีพื้นฐานและงานที่ต้องฝึกเพิ่ม";lead.push(level)}if(e.id==="early_love"&&lifeState().adultInterest)lead.push("คุณกำลังทำความรู้จักกับ "+lifeState().adultInterest);if(e.id==="birth"&&s.origin){lead.push("เรื่องราวของ "+s.origin.name+" เริ่มต้นขึ้นแล้ว"+(s.origin.province?" ณ "+s.origin.province:""));for(const [k,choices] of Object.entries(originSets))lead.push(choices[s.origin[k]].story)}const variant=e.after&&(e.annual?s.history.findLast(x=>x.id===e.after)?.result||e.variants?.[s.answers[e.after]]:e.variants?.[s.answers[e.after]]);if(variant)lead.push(variant);for(const [id,choices,txt] of [...(e.cross||[]),...(e.id==="child"&&revised!==undefined?[]:callbacks[e.id]||[])])if(choices.includes(s.answers[id]))lead.push(txt);return [...(e.age<=10&&(revised!==undefined||flowStory!==undefined)?[]:lead),flowStory??revised??(e.later?window.LIFE_LATER.story(e,lifeState(),s):e.merge?window.LIFE_MERGED.story(e,lifeState()):e.cw==="impact"&&window.LIFE_IMPACT?window.LIFE_IMPACT.story(e,lifeState(),s):e.cw==="workopportunity"&&window.WORK_OPPORTUNITY?window.WORK_OPPORTUNITY.story(e,lifeState(),s):e.cw?window.CAREER_WORLD.story(e,lifeState()):e.flex?window.LIFE_FLEX.replace(e.story,lifeState(),e.age):e.id==="child"?e.story.replace("ลูกวัยห้าขวบ","ลูก"):window.PEOPLE.story(e,lifeState()))].join("\n\n")}
+function storyFor(e){const socialStory=SOCIAL_CONTEXT.story(e,lifeState(),s);if(socialStory!==undefined)return socialStory;if(e.cw==='contextwork')return SOCIAL_CONTEXT.workStory(e,lifeState());if(e.cw==='child30')return SOCIAL_CONTEXT.schoolText(e,lifeState(),window.CHILDHOOD30.story(e,lifeState(),s));const state=lifeState(),flowStory=STORY_FLOW.story(e,state,s),revised=NARRATIVE.story(e,state,s);const lead=[];if(e.id==="family"&&lifeState().parent==="มีลูก")lead.push("คุณมีลูกแล้ว และกำลังทบทวนว่าจะจัดชีวิตครอบครัวในช่วงต่อไปอย่างไร");if(e.id==="study_report"){const level=s.stats.knowledge>=18&&s.stats.discipline>=53?"ผลการเรียนโดดเด่นและมีความสม่ำเสมอ":s.stats.knowledge>=10&&s.stats.discipline>=45?"ผลการเรียนอยู่ในระดับที่ค่อยๆ พัฒนา":"ยังมีพื้นฐานและงานที่ต้องฝึกเพิ่ม";lead.push(level)}if(e.id==="early_love"&&lifeState().adultInterest)lead.push("คุณกำลังทำความรู้จักกับ "+lifeState().adultInterest);if(e.id==="birth"&&s.origin){lead.push("เรื่องราวของ "+s.origin.name+" เริ่มต้นขึ้นแล้ว"+(s.origin.province?" ณ "+s.origin.province:""));for(const [k,choices] of Object.entries(originSets))lead.push(choices[s.origin[k]].story)}const variant=e.after&&(e.annual?s.history.findLast(x=>x.id===e.after)?.result||e.variants?.[s.answers[e.after]]:e.variants?.[s.answers[e.after]]);if(variant)lead.push(variant);for(const [id,choices,txt] of [...(e.cross||[]),...(e.id==="child"&&revised!==undefined?[]:callbacks[e.id]||[])])if(choices.includes(s.answers[id]))lead.push(txt);return [...(e.age<=10&&(revised!==undefined||flowStory!==undefined)?[]:lead),flowStory??revised??(e.later?window.LIFE_LATER.story(e,lifeState(),s):e.merge?window.LIFE_MERGED.story(e,lifeState()):e.cw==="impact"&&window.LIFE_IMPACT?window.LIFE_IMPACT.story(e,lifeState(),s):e.cw==="workopportunity"&&window.WORK_OPPORTUNITY?window.WORK_OPPORTUNITY.story(e,lifeState(),s):e.cw?window.CAREER_WORLD.story(e,lifeState()):e.flex?window.LIFE_FLEX.replace(e.story,lifeState(),e.age):e.id==="child"?e.story.replace("ลูกวัยห้าขวบ","ลูก"):window.PEOPLE.story(e,lifeState()))].join("\n\n")}
 function payYear(age){if(s.paidAge>=age)return;s.paidAge=age;const st=lifeState(),base=window.LIFE_FREEDOM.annual(st,s.stats,age)||{gross:0,expense:0,net:0},pay=age>=18&&s.origin&&window.LIFE_IMPACT?window.LIFE_IMPACT.annual(st,s,age,base):base,extra=window.LIFE_LATER.annual(st,age),interest=pay.interest||0;if(!pay.gross&&!extra.business&&!extra.care&&!extra.children&&!interest)return;const net=pay.net+extra.net,changes=LIFE.apply(s.stats,{m:net,savings:interest});s.history.push({id:"income_"+age,age,title:"รายรับและค่าใช้จ่ายประจำปี",label:"รายได้งาน "+money(pay.gross)+" · ผลกิจการ "+money(extra.business)+" · ค่าใช้จ่าย "+money(pay.expense+extra.care+extra.children)+(interest?" · ผลตอบแทนเงินออม "+money(interest):""),result:"เงินคงเหลือเปลี่ยนสุทธิ "+money(net)+(interest?" และเงินออมเพิ่ม "+money(interest):""),changes,free:{kind:"income"}});}
 function advance(){if(s.done)return;function settleBefore(next){for(let age=Math.max(0,s.checkedAge+1);age<Math.min(next,100);age++){s.checkedAge=age;payYear(age);const state=lifeState();window.LIFE_HEALTH?.annual(s,age,state);const death=window.LIFE_FLEX.death(s,age,state);if(death){s.death=death;s.finishedAge=death.age;s.done=true;s.at=events.length;return false}}return true}while(s.at<events.length){const e=events[s.at];if(!settleBefore(e.age))return;if(allowed(e)&&!Object.hasOwn(s.answers,e.id))return;s.at++}if(!settleBefore(100))return;s.done=true;s.finishedAge=100}
 function begin(o=null){s=fresh(o);advance();save();view="play";render()}
