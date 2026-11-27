@@ -575,6 +575,7 @@ const GENDER_COMMON=new Set(["ฟ้า","เมฆ","น้ำ","ดิน","�
 const GENDER_PREFIX=/(?:ชื่อ|กับ|ชวน|เจอ|พบ|ทัก|บอก|ถาม|ถึง|จาก|ของ|ให้|หา|ตอบ|คุยกับ|โทรหา|นัด|รู้จัก|เลือก|เพื่อน|คนรัก|แฟน|เด็กชาย|เด็กหญิง|เด็ก|ครู|น้อง|พี่|คุณและ|คุณกับ|ทั้ง|แก่|ช่วย|คุยถึง|ข้าง|แทน|แนะนำ|และ|ส่วน|ขณะที่|สำหรับ|ชอบ|ขอโทษ|รัก|ห่างจาก|เล่นกับ|แบ่งให้|เงินให้|คืนให้|ดูแล|ขอบคุณ|สารภาพกับ|ติดต่อ)\s*$/;
 const GENDER_SUFFIX=/^\s*(?:ชวน|ถาม|บอก|เล่า|เสนอ|แนะนำ|เดิน|นั่ง|กำลัง|อยาก|ขอ|เห็น|รู้|เป็น|มี|ไม่|ยอม|รับ|ตอบ|เล่น|ทำ|ไป|มา|ช่วย|ได้|ยัง|เคย|จะ|เริ่ม|กลับ|ส่ง|หยิบ|ร้อง|หัวเราะ|เงียบ|โกรธ|เสียใจ|สนใจ|เข้า|ออก|เลือก|มอง|พูด|คิด|ถือ|แวะ|คุย|ติดต่อ|รู้สึก|ชอบ|ขอบคุณ|ยื่น|สัญญา|ต้อง|ร่วม|กับ|และ|เอง|ด้วย|อีก|คน|ที่|ใน|เมื่อ|เพราะ|หลัง|ก่อน|เรื่อง|นะ|ว่า|ให้|หรือ|จึง|ตรง|พร้อม|มาก|$|[,.!?·:()])/;
 const GENDER_BAD={
+ "ปกรณ์":/อุปกรณ์/g,
  "ฟ้า":/(?:ท้องฟ้า|ฟ้าฝน|ฟ้าใส|ฟ้าร้อง|ฟ้าผ่า|ฟ้าสาง|ฟ้าแลบ|ไฟฟ้า|สีฟ้า|ฟ้าคราม|ฟ้าสว่าง)/g,
  "น้ำ":/(?:น้ำล้น|น้ำตก|น้ำทะเล|น้ำใจ|น้ำหนัก|น้ำตาล|น้ำมัน|น้ำแข็ง|น้ำฝน|น้ำท่วม|น้ำเปล่า|น้ำดื่ม|น้ำเสียง|น้ำตา|น้ำประปา|น้ำร้อน|น้ำเย็น|น้ำอุ่น|น้ำขัง|น้ำปลา|น้ำซุป|น้ำแกง|น้ำผลไม้|น้ำย|น้ำจิ้ม|น้ำสะอาด|น้ำสกปรก|น้ำเชื่อม|น้ำเกลือ|น้ำใน|น้ำที่|น้ำมา|น้ำไป|น้ำให้|น้ำก่อน|น้ำจาก|น้ำแล้ว|น้ำได้|น้ำด้วย|น้ำและ|น้ำกับ|น้ำเมื่อ|น้ำพอ|น้ำมาก|น้ำเท่า|น้ำไม่|น้ำรั่ว|ดื่มน้ำ|กินน้ำ|เล่นน้ำ|ล้างน้ำ|เติมน้ำ|รดน้ำ|อาบน้ำ|ตักน้ำ|ลงน้ำ|ขึ้นน้ำ|ว่ายน้ำ|ขาดน้ำ|หิวน้ำ|ชายหาดและน้ำ)/g,
  "ดิน":/(?:ดินสอ|ดินเหนียว|ดินทราย|ดินปั้น|ดินปลูก|ดินน้ำมัน|บนดิน|ใต้ดิน|พื้นดิน|ก้อนดิน|ที่ดิน|แผ่นดิน|ปลูกลงดิน|ขุดดิน|ถมดิน)/g,
@@ -616,10 +617,11 @@ function genderMentions(text,preferred=[]){
   let m,at=0,blocked=[];const bad=GENDER_BAD[name];if(bad){bad.lastIndex=0;while((m=bad.exec(src)))blocked.push([m.index,m.index+m[0].length]);}
   while((at=src.indexOf(name,at))!==-1){
    const end=at+name.length,left=src.slice(0,at),right=src.slice(end);const overlap=claimed.some(([a,b])=>at<b&&end>a)||blocked.some(([a,b])=>at<b&&end>a);
-   const explicit=GENDER_PREFIX.test(left),subject=(at===0||/[\s,:·!?()]$/.test(left))&&GENDER_SUFFIX.test(right);
-   const namedContext=preferred.includes(name)&&(explicit||GENDER_SUFFIX.test(right)||subject);
-   const proper=!GENDER_COMMON.has(name);
-   if(!overlap&&(proper||explicit&&GENDER_SUFFIX.test(right)||subject||namedContext)){found.add(name);claimed.push([at,end]);}
+   // Require a plausible name boundary on both sides. A known nickname is not
+   // evidence that the same letters inside an ordinary word refer to that person.
+   const leftBoundary=at===0||/[\s,:;·!?()"'“”‘’–—]$/.test(left)||GENDER_PREFIX.test(left);
+   const rightBoundary=end===src.length||/^[\s,:;·!?()"'“”‘’–—]/.test(right)||GENDER_SUFFIX.test(right);
+   if(!overlap&&leftBoundary&&rightBoundary){found.add(name);claimed.push([at,end]);}
    at=end;
   }
  }
