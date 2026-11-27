@@ -1467,7 +1467,7 @@ q("บอกว่าไม่ได้เห็นตอนเกิดเห�
 scene(12,"เพื่อนกลุ่มเดิมกับการเรียกผู้ปกครอง",st=>["cover","blame"].includes(st.vy_mischief_status)?"ครูพบข้อมูลไม่ตรงกับคำบอกเล่าเรื่องกระจกและเรียกผู้เกี่ยวข้องกลับมาคุย โจ๊กยังขอให้คุณยืนยันเรื่องเดิม":"โจ๊กกลับมาคุยเรื่องกระจกที่เคยรับผิดชอบร่วมกัน เขาชวนคุณเล่นในสนามที่เปิดให้ใช้แล้ว",[
 q("เล่าข้อเท็จจริงและขอแก้สิ่งที่เคยทำ","คุณรับผิดชอบส่วนของตัวเองและมีโอกาสเริ่มใหม่",{i:4,responsibility:4}),
 q("รักษามิตรภาพแต่ไม่รับปิดบังความผิดอีก","โจ๊กทราบว่าคุณมีขอบเขตของตัวเอง",{selfcontrol:4,friend:2}),
-q("ปกป้องกลุ่มด้วยการโกหกต่อ","ความเชื่อมั่นจากผู้ใหญ่ลดลงและปัญหายังมีผลต่อชีวิต",{i:-5,reliable:-4},{}, {vyRisk:2}),
+q("ปกป้องกลุ่มด้วยการโกหกต่อ","ความเชื่อมั่นจากผู้ใหญ่ลดลงและปัญหายังมีผลต่อชีวิต",{i:-5,reliable:-4},"end",{vyRisk:2}),
 q("ขอเว้นระยะจากกลุ่มและกลับไปทำกิจกรรมอื่น","คุณไม่ได้ถูกกำหนดให้คบกลุ่มเดิมตลอดชีวิต",{h:2,selfcontrol:3})])]
 },
 {key:"games",gate:()=>true,person:"บอล",stages:[
@@ -1621,7 +1621,13 @@ W.story=(e,st)=>{if(e.cw!=="variedyouth")return prev.story(e,st);const z=defs.ge
 W.choices=(e,st,s)=>{
  if(e.cw!=="variedyouth")return prev.choices(e,st,s);
  const a=defs.get(e.vyKey),j=e.vyStage,z=a.stages[j];
- return [...z.choices.map(x=>toChoice(a,j,x)),...z.special.filter(x=>s.stats[x.stat]>=x.min).map(x=>({...toChoice(a,j,x.choice),special:true,baseIndex:x.base}))];
+ const ordinary=z.choices.map(x=>toChoice(a,j,x));
+ if(a.key==="crush"&&j===2&&["confess","respect"].includes(st.vy_crush_status)){
+  const mutual=s.stats.social>=45&&s.stats.reliable>=40&&((s.seed??0)>>>0)%4!==0;
+  ordinary[1]=toChoice(a,j,mutual?q("ถามเพลงว่าอยากลองคบกันไหม และยอมรับคำตอบของเธอ","เพลงบอกว่ารู้สึกดีเช่นกัน ทั้งคู่ตกลงลองคบกันโดยยังมีพื้นที่ของตัวเอง",{partner:5,h:3,confidence:2},"end",{relationship:"คบกัน",partnerName:"เพลง",teenBond:"เพลง",teenRelationship:"คบกัน",pastRomance:"ใช่",vySongDating:true}):q("ถามเพลงว่าอยากลองคบกันไหม และยอมรับคำตอบของเธอ","เพลงบอกว่ายังไม่ได้รู้สึกแบบเดียวกัน คุณได้รับคำตอบที่ชัดเจนและไม่ได้เริ่มคบกัน",{confidence:2,e:2},"end"));
+ }
+ const extras=z.special.filter(x=>s.stats[x.stat]>=x.min&&!(a.key==="games"&&j===2&&st.vy_games_status==="casual")&&!(a.key==="sports"&&j===1&&st.vy_sports_status!=="practice")).map(x=>({...toChoice(a,j,x.choice),special:true,baseIndex:x.base}));
+ return [...ordinary,...extras];
 };
 W.after=(st,old,e,n,ch,item)=>{
  prev.after(st,old,e,n,ch,item);
@@ -1631,6 +1637,7 @@ W.after=(st,old,e,n,ch,item)=>{
  if(j===0&&p&&st[status(a.key)]!=="end")st.people[p]={...(st.people[p]||{}),feeling:"รู้สึกดี",boundary:"เปิดใจ"};
  if(p&&ch.set?.vyClosePerson&&st.people[p])st.people[p]={...st.people[p],feeling:"เว้นระยะ",boundary:"ไม่ติดต่อ"};
  if(e.vyKey==="crush"&&j===1&&st[status(a.key)]==="pressure"&&st.people[p])st.people[p]={...st.people[p],feeling:"เว้นระยะ",boundary:"ไม่ติดต่อ"};
+ if(e.vyKey==="crush"&&j===2&&st.vySongDating&&st.partnerName==="เพลง")st.people["เพลง"]={...(st.people["เพลง"]||{}),feeling:"รู้สึกดี",boundary:"เปิดใจ"};
  delete st.vyClosePerson;
 };
 // Preserve the study-habit IDs and academic deltas, but replace the eight identical prompts with concrete age-specific situations.
@@ -1646,4 +1653,21 @@ const habits=[
 ];
 for(const [i,h] of habits.entries()){const e=S.find(e=>e.id==="youth_habit_"+(10+i));if(!e)continue;e.title=h[0];e.story=h[1];e.choices.forEach((x,n)=>{if(h[2][n])x.label=h[2][n];});}
 w.VARIED_YOUTH={arcs};
+})(window);
+
+
+// One follow-up for a mutually chosen teenage relationship; no automatic romance.
+(function(w){
+const W=w.CAREER_WORLD,previous=W.allowed;
+const c=(label,result,delta,set={})=>({label,result,delta,set});
+w.STORY.push({id:"varied_song_future",age:19,order:89,title:"เพลงกับเส้นทางหลังโรงเรียน",story:"เพลงที่คุณตกลงคบกันเมื่ออายุสิบเจ็ดมีแผนชีวิตของตัวเอง ตอนนี้ทั้งคู่มีตารางและภาระใหม่ คุณจะตกลงวิธีรักษาความสัมพันธ์อย่างไร",cw:"songfuture",custom:true,choices:[
+c("คุยกันเรื่องเวลาและแผนของทั้งสองคน","ทั้งคู่หาวิธีพบกันโดยไม่ต้องทิ้งเป้าหมายของตัวเอง",{partner:5,problem:3}),
+c("ตกลงเว้นระยะเมื่อแต่ละคนมีภาระ","คุณรักษาความสัมพันธ์และพื้นที่ส่วนตัว",{partner:3,energy:2}),
+c("ยืนยันให้เพลงเปลี่ยนแผนเพื่อให้ตรงกับคุณ","เพลงไม่สบายใจกับการถูกกำหนดอนาคตแทน",{partner:-6,stress:4}),
+c("พูดคุยและตกลงจบความสัมพันธ์อย่างเคารพกัน","ทั้งคู่แยกเส้นทางโดยยังเก็บประสบการณ์ที่เคยมี",{partner:-3,selfcontrol:3},{relationship:"แยกทาง",partnerName:"",teenBond:"",teenRelationship:"",vySongDating:false})
+]});
+const choices=W.choices,story=W.story;
+W.allowed=(e,st,s)=>e.cw==="songfuture"?st.vySongDating===true&&st.partnerName==="เพลง"&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship):previous(e,st,s);
+W.choices=(e,st,s)=>e.cw==="songfuture"?e.choices:choices(e,st,s);
+W.story=(e,st)=>e.cw==="songfuture"?e.story:story(e,st);
 })(window);
