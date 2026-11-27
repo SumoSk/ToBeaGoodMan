@@ -2303,3 +2303,68 @@ F.activities=(st,s,age)=>{
  return [...list,...choices.filter(a=>F.valid(st,s,age,a))];
 };
 })(window);
+
+
+// Gameplay audit: bound generic loops over an entire life, retain actual consequences and recovery routes.
+(function(w){
+"use strict";
+const W=w.CAREER_WORLD,prev={allowed:W.allowed,story:W.story,choices:W.choices,after:W.after};
+const clamp=n=>Math.max(0,Math.min(100,n));
+const kind=e=>e.cw==="healthstory"?"health:"+e.hsType:e.cw==="adultx"?"work:"+e.ax:e.cw==="crossx"?"cross:"+e.crossx:e.cw==="workopportunity"?"offer:"+e.woStage:e.cw==="money"?"trainingCost":e.cw==="explore"?"careerMenu":e.flex==="court"?"court":e.later==="nocare"?"nocare":"";
+const rec=(st,k)=>st.lifeAudit?.[k]||{count:0,age:-100};
+const job=st=>[st.profession||st.mode||"",st.mode||""].join("|");
+const recent=(st,k,a,n)=>a-rec(st,k).age<n;
+const partnered=st=>!!st.partnerName&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship);
+const healthy=t=>t.physical>=60&&t.energy>=45&&t.stress<=60;
+W.allowed=(e,st,s)=>{
+ const k=kind(e),a=e.age,t=s.stats,r=rec(st,k),h=st.healthArc||{};
+ if(k==="health:follow"){
+  if(!["diagnosed","delay","treated"].includes(h.status))return false;
+  if(r.count){
+   const changed=h.status!==r.status||Math.abs(t.physical-r.physical)>=18;
+   if(a-r.age<3||!changed&&a-r.age<8)return false;
+   if(r.count>=3&&!changed&&healthy(t))return false;
+   if(r.count>=4&&!changed&&a-r.age<12)return false;
+  }
+ }
+ if(k==="health:crisis"&&r.count){if(a-r.age<5)return false;if(t.physical>=r.physical-12&&h.status===r.status&&a-r.age<10)return false;}
+ if(k==="work:task"&&(st.lateWork==="retired"||r.count>=5||r.count>=2&&r.job===job(st)&&a-r.age<12))return false;
+ if(k==="work:result"&&r.taskAge===st.axTaskAge&&r.taskCount>=2)return false;
+ if(k==="work:jobsearch"&&r.count&&(a-r.age<8||r.count>=3&&a-r.age<15))return false;
+ if(k==="cross:pet"&&r.count&&(r.n===3||r.count>=2))return false;
+ if(k==="cross:petfollow"&&r.count>=2&&r.petAge===st.cxPetAge)return false;
+ if(k==="cross:intimacy"&&r.count>=2&&r.partner===st.partnerName)return false;
+ if(k==="trainingCost"&&r.count>=2&&r.job===st.careerPlan)return false;
+ if(k==="careerMenu"&&r.count>=3&&r.job===job(st)&&r.request===(st.qCareerRequest||0))return false;
+ if(k==="offer:0"&&r.count>=4&&t.stress<85&&t.security>=25&&r.request===(st.qCareerRequest||0))return false;
+ if(k==="nocare"&&r.count&&a-r.age<8)return false;
+ return prev.allowed(e,st,s);
+};
+W.story=(e,st)=>{
+ const k=kind(e),r=rec(st,k),h=st.healthArc||{};
+ if(k==="health:follow"&&r.count){const lead= h.status==="treated"?"แผนรักษาที่คุณเลือกเมื่อก่อนช่วยให้ใช้ชีวิตต่อได้ แต่ครั้งนี้ต้องคุยเรื่องการรักษาระยะยาวและภาระที่เปลี่ยนไป":"การดูแลครั้งก่อนยังไม่เพียงพอ คุณต้องตัดสินใจว่าจะปรับวิถีชีวิตหรือขอความช่วยเหลือเพิ่มเติม";return "หลายปีผ่านไปนับจากการติดตามครั้งก่อนเมื่ออายุ "+r.age+" ปี "+lead;}
+ if(k==="health:crisis"&&r.count)return "หลังเคยมีอาการรุนแรงเมื่ออายุ "+r.age+" ปี คราวนี้โรคกลับมากระทบกิจวัตรอีกครั้ง การประเมินและการจัดการภาระในชีวิตเป็นเรื่องที่ต้องตัดสินใจใหม่";
+ if(k==="work:task"&&r.count>=1){const role=W.by?.[st.profession]?.name||st.mode||"งาน";return r.count%2?"ในงาน"+role+" มีคนใหม่เข้ามารับช่วงงานสำคัญและขอให้คุณช่วยวางระบบเพื่อไม่ให้ความผิดพลาดเดิมเกิดซ้ำ":"ผู้เกี่ยวข้องในงาน"+role+" ต้องเลือกระหว่างการส่งมอบตามสัญญาเดิมกับการปรับวิธีทำงานให้เหมาะกับทรัพยากรที่ลดลง";}
+ return prev.story(e,st);
+};
+W.choices=(e,st,s)=>{
+ const base=prev.choices(e,st,s),k=kind(e),r=rec(st,k);
+ const rename=(q,label,result)=>({...q,label,result});
+ if(k==="health:follow"&&r.count){const rows=st.healthArc?.status==="treated"?[["ทบทวนแผนรักษากับแพทย์และรักษากิจวัตร","คุณดูแลอาการต่อเนื่องและมีแรงใช้ชีวิตมากขึ้น"],["แบ่งภาระกับคนที่ไว้ใจและจัดการนัดหมาย","คุณได้รับการสนับสนุนและลดภาระที่ต้องทำเอง"],["รักษาต่อแต่ยังไม่เปลี่ยนภาระในชีวิต","อาการดีขึ้นบางส่วนแต่ยังมีข้อจำกัด"],["หยุดติดตามผลเพราะไม่อยากรับภาระเพิ่ม","สุขภาพและความเสี่ยงในอนาคตแย่ลง"]]:[["กลับเข้าสู่การดูแลและวางแผนฟื้นฟูจริงจัง","คุณเริ่มลดปัจจัยที่กระทบสุขภาพและติดตามอาการ"],["ขอความช่วยเหลือด้านการเดินทางและการดูแล","คุณไม่ต้องจัดการการรักษาทุกอย่างด้วยตัวเอง"],["รักษาเท่าที่ทำได้โดยยังไม่ปรับชีวิต","ปัญหาบางส่วนยังต้องติดตาม"],["เลื่อนการดูแลต่อแม้รู้ว่าปัญหาสะสม","ความเสี่ยงเพิ่มขึ้นจากการละเลยต่อเนื่อง"]];return base.map((q,i)=>rows[i]?rename(q,...rows[i]):q);}
+ if(k==="health:crisis"&&r.count){const rows=[["รับการประเมินเร่งด่วนและจัดแผนพักฟื้นใหม่","คุณได้รับการดูแลภาวะรุนแรงและลดภาระชั่วคราว"],["ให้ผู้ที่ไว้ใจช่วยประสานการรักษาและจัดการเรื่องค้าง","คุณมีคนช่วยให้เข้าถึงการดูแลและได้พัก"],["ยอมตรวจแต่ยังยืนยันจะรักษาวิถีชีวิตเดิม","การฟื้นตัวอาจไม่เต็มที่และภาระสุขภาพยังคงอยู่"],["ปฏิเสธการดูแลอีกครั้ง","ภาวะทรุดหนักขึ้นและความเสี่ยงเสียชีวิตเพิ่ม"]];return base.map((q,i)=>rows[i]?rename(q,...rows[i]):q);}
+ if(k==="work:task"&&r.count){const rows=r.count%2?[["ทำคู่มือและตรวจงานตัวอย่างกับคนใหม่","ทีมได้แนวทางทำงานที่ตรวจสอบได้"],["แบ่งขอบเขตและนัดทบทวนความคืบหน้า","ทีมเรียนรู้ร่วมกันโดยไม่โยนงานทั้งหมดให้คุณ"],["ส่งงานให้คนใหม่โดยไม่อธิบายจุดเสี่ยง","งานเดินเร็วแต่ความผิดพลาดอาจย้อนกลับมา"],["ชี้แจงว่าภาระเดิมเต็มแล้ว","คุณรักษาคุณภาพของงานเดิม"]]:[["ตรวจทรัพยากรแล้วเสนอแผนส่งมอบใหม่","ผู้เกี่ยวข้องเห็นแผนที่ทำได้จริง"],["ตกลงขอบเขตที่จำเป็นกับทีม","ทุกคนเห็นหน้าที่และข้อจำกัดร่วมกัน"],["รับปากส่งทั้งหมดทั้งที่ทรัพยากรไม่พอ","งานมีความเสี่ยงและแรงกดดันเพิ่มขึ้น"],["ปฏิเสธขอบเขตงานส่วนที่ทำไม่ไหว","คุณรักษาคุณภาพงานที่รับผิดชอบ"]];return base.map((q,i)=>rows[i]?rename(q,...rows[i]):q);}
+ return base;
+};
+W.after=(st,old,e,n,ch,item)=>{
+ prev.after(st,old,e,n,ch,item);
+ const k=kind(e);if(!k)return;
+ const r=rec(old,k),q=item.careerSet||ch.set||{},taskAge=old.axTaskAge;
+ // Use recorded deltas rather than current stats during replay; physical checkpoints are saved at decision time.
+ st.lifeAudit={...(old.lifeAudit||{}),[k]:{count:r.count+1,age:item.age,n,job:k==="trainingCost"?old.careerPlan:job(old),request:old.qCareerRequest||0,taskAge,taskCount:r.taskAge===taskAge?(r.taskCount||0)+1:1,petAge:old.cxPetAge,partner:old.partnerName,status:st.healthArc?.status,physical:q.auditPhysical??r.physical??50}};
+ if(k==="work:result"&&r.taskAge===taskAge&&r.taskCount>=1&&st.axTask){st.axTask="";st.axTaskAge=-1;}
+ if(k==="health:crisis"&&old.healthArc?.status==="unexamined"&&st.healthArc?.status==="delay")st.healthArc={...st.healthArc,status:"unexamined"};
+};
+const choose=W.choices;
+W.choices=(e,st,s)=>{const b=choose(e,st,s);return e.cw==="healthstory"?b.map(q=>({...q,set:{...(q.set||{}),auditPhysical:clamp(s.stats.physical+(q.delta?.physical||0))}})):b;};
+w.LIFE_AUDIT={kind,rec};
+})(window);
