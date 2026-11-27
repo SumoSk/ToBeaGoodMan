@@ -238,3 +238,144 @@ W.after=(st,old,e,n,ch,item)=>{
  prev.after(st,old,e,n,ch,item);
 };
 })(window);
+
+
+// Adult work and cross-life arcs; additive to existing career, memory, youth and saves.
+(function adultLife(w){
+"use strict";
+const W=w.CAREER_WORLD,S=w.STORY,P=w.PEOPLE, prior={allowed:W.allowed,choices:W.choices,story:W.story,after:W.after};
+const by=Object.fromEntries(S.map(e=>[e.id,e]));
+const c=(label,result,delta={},set={})=>({label,result,delta,set});
+const stub=Array.from({length:4},()=>c("ตัดสินใจ","ผลจะขึ้นกับสถานการณ์ในเกม"));
+const templates=[
+["interview",64.9,"การคัดเลือกก่อนเริ่มอาชีพ","คุณผ่านช่วงเตรียมตัวแล้ว แต่ต้องแสดงความพร้อมก่อนเริ่มงาน"],
+["jobsearch",59,"ประกาศรับสมัครงาน","คุณพบประกาศงานทั่วไปที่ไม่ต้องมีคุณวุฒิวิชาชีพเฉพาะ จะลองสมัครไหม"],
+["trial",59.1,"ช่วงทดลองงาน","นายจ้างตอบรับให้ทดลองทำงาน ยังไม่ได้เป็นพนักงานประจำ"],
+["meet",71.1,"คนใหม่ในโลกการทำงาน","คุณได้รู้จักคนที่เกี่ยวข้องกับงาน"],
+["task",71.2,"งานที่ต้องพิสูจน์ตัวเอง","มีงานในขอบเขตหน้าที่ที่ต้องจัดการ"],
+["result",71.3,"ผลของงานที่รับไว้","ผู้เกี่ยวข้องกลับมาแจ้งผลจากงานครั้งก่อน"],
+["progress",71.4,"ความก้าวหน้าในเส้นทางเดิม","คุณมีผลงานให้ทบทวนและเลือกเป้าหมายต่อไป"],
+["ethics",71.5,"ข้อเสนอที่ไม่โปร่งใส","มีคนเสนอผลประโยชน์ส่วนตัวแลกกับการละเลยมาตรฐาน"],
+["ethicsfollow",71.6,"เรื่องที่ยังไม่จบจากงาน","คนที่เกี่ยวข้องกลับมาขอข้อมูล"],
+["reunion",72.1,"ข้อความจากคนที่เคยร่วมงาน","คนที่เคยรู้จักจากงานกลับมาติดต่อ"],
+["layoff",72.2,"รายได้ที่ไม่แน่นอน","ที่ทำงานแจ้งว่าต้องลดรายจ่ายและทบทวนการจ้าง"],
+["pair",73.1,"คืนที่อยากมีเวลาให้กัน","คนรักชวนคุยเรื่องการใช้เวลาร่วมกัน"],
+["pairfollow",73.2,"สิ่งที่เคยตกลงกัน","คนรักชวนคุยเรื่องครั้งก่อน"],
+["child",73.3,"วันสำคัญของลูก","ลูกมีงานที่โรงเรียนและอยากให้คุณไปด้วย"],
+["childfollow",73.4,"เรื่องเล็กที่ลูกจำได้","ลูกกลับมาพูดถึงเรื่องในอดีต"],
+["biz",74.1,"อยากมีกิจการของตัวเองไหม","คุณพบโอกาสทดลองกิจการจากทักษะและตลาดในพื้นที่"],
+["bizfollow",74.2,"ลูกค้าจะกลับมาไหม","ถึงเวลาทบทวนผลกิจการที่เริ่มไว้"],
+["bizcrisis",74.3,"ต้นทุนที่สูงขึ้น","กิจการเดิมเจอค่าใช้จ่ายเกินแผน"],
+["wealth",75.1,"เงินที่เปลี่ยนวิถีชีวิต","คุณมีเงินสำรองพอจะเลือกใช้ชีวิตได้หลายแบบ"],
+["ordinary",75.2,"วันหยุดที่ไม่ได้วางแผน","วันนี้ไม่มีเหตุการณ์ใหญ่ คุณมีเวลาทำสิ่งที่อยากทำ"],
+["lost",75.3,"ของที่หายไป","คุณพบของมีค่าที่มีข้อมูลเพียงพอให้ตามหาเจ้าของได้"],
+["social",76.1,"คนใหม่ในวงสนทนา","กิจกรรมเปิดโอกาสให้รู้จักคนใหม่โดยไม่ต้องเริ่มความรักทันที"],
+["socialfollow",76.2,"จะรู้จักกันต่อไหม","คนที่คุณเลือกเปิดใจรู้จักกลับมาชวนพบกันอีกครั้ง"]
+];
+for(let a=18;a<=99;a++)for(const [k,order,title,story] of templates)S.push({id:`adultx_${k}_${a}`,age:a,order,title,story,cw:"adultx",ax:k,custom:true,choices:stub});
+const working=st=>["งานประจำ","งานประจำควบธุรกิจ","ธุรกิจ","อิสระ"].includes(st.mode)&&st.lateWork!=="retired"&&(!!st.profession||!!st.everWorked);
+const employed=st=>working(st)&&["งานประจำ","งานประจำควบธุรกิจ"].includes(st.mode);
+const partnered=st=>["คบกัน","อยู่ด้วยกัน"].includes(st.relationship)&&!!st.partnerName;
+const training=st=>["training","foundation"].includes(st.careerPhase)||["student","applying","gap"].includes(st.youthStatus);
+const workKey=st=>st.profession||st.mode;
+const same=st=>working(st)&&st.axWork===workKey(st)&&st.axMode===st.mode;
+const job=st=>W.by[st.profession]?.name||st.mode||"งาน";
+const last=(s,k)=>s.history.findLast(x=>x.id.startsWith("adultx_"+k+"_"));
+const due=(s,k,a,n)=>!last(s,k)||a-last(s,k).age>=n;
+const child=(st,a)=>st.children?.find(x=>a-x.born>=5&&a-x.born<=17);
+const name=(st,a)=>["กานต์","ตะวัน","ขิม","พีท","เมษา","นนท์","พิมพ์","บีม","แป้ง","อาร์ต"].find(n=>!st.people?.[n])||"กานต์ (รู้จักเมื่ออายุ "+a+")";
+const privateOK=(st,n)=>!!n&&P.privateOK(st,n);
+const role=st=>{const g=W.by[st.profession]?.group||"";if(/สุขภาพ|ดูแล/.test(g))return ["ผู้รับบริการ","การดูแลและประสานงาน","ความปลอดภัยและความเป็นส่วนตัว"];if(/กฎหมาย|ยุติธรรม|สาธารณะ/.test(g))return ["ผู้เกี่ยวข้อง","การตรวจสอบข้อมูลและเอกสาร","ความเป็นธรรมและกติกา"];if(/เทคโนโลยี|ดิจิทัล|วิทยาศาสตร์|อุตสาหกรรม/.test(g))return ["ผู้ใช้งานหรือผู้ว่าจ้าง","การแก้ปัญหาและทดสอบงาน","ความถูกต้องและคุณภาพ"];if(/เกษตร|อาหาร|ฝีมือ|ช่าง/.test(g))return ["ลูกค้าหรือผู้รับสินค้า","การจัดวัตถุดิบและตรวจคุณภาพ","ความปลอดภัยและต้นทุน"];if(/บันเทิง|สร้างสรรค์|ศิลปะ|กีฬา/.test(g))return ["ผู้ชม ผู้ร่วมงาน หรือผู้ว่าจ้าง","การซ้อมและสร้างผลงาน","คุณภาพผลงานและข้อตกลง"];if(/การเงิน|ธุรกิจ|สำนักงาน/.test(g))return ["ลูกค้าหรือผู้เกี่ยวข้อง","การตรวจตัวเลขและประสานงาน","ความถูกต้องและความน่าเชื่อถือ"];if(/การบิน|ท่องเที่ยว/.test(g))return ["ผู้โดยสารหรือผู้รับบริการ","การจัดตารางและบริการ","ความปลอดภัยและมาตรฐาน"];return ["ลูกค้าหรือผู้ร่วมงาน","การจัดลำดับงาน","คุณภาพและความรับผิดชอบ"];};
+W.allowed=(e,st,s)=>{
+ const a=e.age,t=s.stats;
+ if(e.cw!=="adultx"){
+  if(e.cw==="entry"&&st.axInterviewYear===a&&st.axInterviewJob===e.cwProfession&&st.axInterviewResult!=="offer")return false;
+  return prior.allowed(e,st,s);
+ }
+ switch(e.ax){
+ case "interview":{const x=W.by[st.careerPlan],en=by["cw_entry_"+st.careerPlan+"_"+a];return !!x&&!!en&&st.careerPhase==="training"&&a>=st.trainingAge+x.years&&st.youthStatus!=="student"&&prior.allowed(en,st,s)&&W.qualified(x,st,s)&&due(s,"interview",a,1);}
+ case "jobsearch":return !working(st)&&!training(st)&&!st.careerPlan&&!st.careerMenu&&!["เกี่ยวข้องอาชญากรรม","ฟื้นตัว","ดูแลครอบครัว"].includes(st.mode)&&due(s,"jobsearch",a,3)&&(a<30||a%3===0);
+ case "trial":return st.axTrial===a&&!working(st)&&!training(st);
+ case "meet":return working(st)&&(!same(st)||!st.axContact)&&due(s,"meet",a,3);
+ case "task":return same(st)&&!st.axTask&&a>st.axStart&&due(s,"task",a,4);
+ case "result":return !!st.axTask&&same(st)&&a>st.axTaskAge&&due(s,"result",a,2);
+ case "progress":return same(st)&&st.axWins>=2&&t.reliable>=55&&t.skill>=40&&due(s,"progress",a,5);
+ case "ethics":return same(st)&&!st.axEthics&&t.career>=25&&due(s,"ethics",a,7);
+ case "ethicsfollow":return !!st.axEthics&&a>st.axEthicsAge&&due(s,"ethicsfollow",a,2);
+ case "reunion":return privateOK(st,st.axContact)&&a>=st.axStart+5&&due(s,"reunion",a,8);
+ case "layoff":return employed(st)&&t.security<35&&t.reliable<55&&a%3===1&&due(s,"layoff",a,7);
+ case "pair":return partnered(st)&&(!st.axPair||st.axPartner!==st.partnerName)&&due(s,"pair",a,4);
+ case "pairfollow":return partnered(st)&&st.axPartner===st.partnerName&&!!st.axPair&&a>st.axPairAge&&due(s,"pairfollow",a,2);
+ case "child":return !!child(st,a)&&!st.axChild&&due(s,"child",a,4);
+ case "childfollow":return !!st.axChild&&a>st.axChildAge&&st.children?.some(x=>x.name===st.axChildName&&x.born===st.axChildBorn)&&due(s,"childfollow",a,2);
+ case "biz":return !st.lateBusiness&&!training(st)&&t.m>=10000&&t.physical>=30&&a%3===2&&due(s,"biz",a,5);
+ case "bizfollow":return !!st.lateBusiness&&!st.bizTrouble&&st.axBizAge!==undefined&&a>st.axBizAge&&due(s,"bizfollow",a,3);
+ case "bizcrisis":return !!st.lateBusiness&&!!st.bizTrouble&&st.axBizAge!==undefined&&due(s,"bizcrisis",a,2);
+ case "wealth":return t.m>=100000&&a%3===1&&due(s,"wealth",a,6);
+ case "ordinary":return a%4===2;
+ case "lost":return a%7===3;
+ case "social":return !partnered(st)&&!st.axSocial&&a%3===0&&due(s,"social",a,5);
+ case "socialfollow":return !partnered(st)&&privateOK(st,st.axSocial)&&a>st.axSocialAge;
+ default:return false;
+ }};
+W.story=(e,st)=>{
+ if(e.cw!=="adultx")return prior.story(e,st);
+ const r=role(st),j=job(st),p=st.partnerName||"คนรัก";
+ switch(e.ax){
+ case "interview":return "คุณเตรียมตัวเป็น"+(W.by[st.careerPlan]?.name||"อาชีพที่เลือก")+" มาครบระยะขั้นต่ำตามกติกาเกม ผู้ว่าจ้างหรือหน่วยงานขอประเมินทักษะ วินัย และความพร้อมก่อนเริ่มงาน";
+ case "meet":return "ในบทบาท"+j+" คุณได้รู้จัก "+name(st,e.age)+" ผู้เกี่ยวข้องกับงานคนใหม่ อีกฝ่ายแนะนำตัวและเสนอแลกเปลี่ยนวิธีทำงาน";
+ case "task":return "ในงาน"+j+" มีโจทย์เรื่อง"+r[1]+" ที่ต้องจัดการ "+r[0]+" ต้องการคำตอบเร็ว แต่คุณยังต้องคำนึงถึง"+r[2];
+ case "result":return "หลังงานที่คุณเลือก"+(st.axTask==="rush"?"เร่งส่ง":st.axTask==="care"?"ตรวจให้รอบคอบ":"แบ่งขอบเขต")+" เมื่ออายุ "+st.axTaskAge+" ปี "+r[0]+" กลับมาแจ้งผลและเสนอสิ่งที่ต้องปรับ";
+ case "progress":return "ผลงานในบทบาท"+j+" เปิดโอกาสให้รับงานที่ซับซ้อนขึ้นและเจรจาค่าตอบแทน ไม่จำเป็นต้องขึ้นเป็นหัวหน้าหรือบริหารคน";
+ case "ethics":return "คนที่เกี่ยวข้องกับงาน"+j+" เสนอเงินพิเศษหากคุณยอมละเลย"+r[2]+" เขาบอกว่าคงไม่มีใครสนใจ";
+ case "ethicsfollow":return "เมื่ออายุ "+st.axEthicsAge+" ปี คุณเคย"+(st.axEthics==="accepted"?"รับผลประโยชน์ที่ไม่โปร่งใส":st.axEthics==="reported"?"แจ้งเรื่องตามช่องทาง":"ปฏิเสธข้อเสนอ")+" วันนี้มีผู้เกี่ยวข้องขอข้อมูลเกี่ยวกับเรื่องนั้น";
+ case "reunion":return st.axContact+" คนที่รู้จักจากงานเมื่ออายุ "+st.axStart+" ปี ส่งข้อความมาหา ยังจำช่วงที่เคยทำความรู้จักกันได้และอยากแลกเปลี่ยนข่าวชีวิต";
+ case "pair":return p+" ชวนวางแผนใช้เวลาร่วมกันในวันว่าง"+(working(st)?" เพราะช่วงนี้คุณมีภาระงาน":"")+" ทั้งคู่มีความต้องการของตัวเอง";
+ case "pairfollow":return p+" จำได้ว่าเมื่ออายุ "+st.axPairAge+" ปี คุณ"+(st.axPair==="missed"?"เลื่อนนัดที่เคยตกลง":"พยายามแบ่งเวลาให้กัน")+" วันนี้อยากคุยถึงความสัมพันธ์ในช่วงนี้";
+ case "child":{const ch=child(st,e.age);return ch.name+" อายุ "+(e.age-ch.born)+" ปี มีงานที่โรงเรียนและอยากให้คุณไปด้วย"+(working(st)?" แต่คุณต้องจัดเวลาจากงาน":"");}
+ case "childfollow":return st.axChildName+" ยังจำวันงานโรงเรียนเมื่อคุณอายุ "+st.axChildAge+" ปี ที่คุณ"+(st.axChild==="missed"?"ไม่ได้ไปตามที่ลูกหวัง":"พยายามจัดเวลาและพูดคุยกับลูก")+" วันนี้ลูกมีเรื่องอยากเล่าให้ฟัง";
+ case "bizfollow":return "กิจการที่เริ่มเมื่ออายุ "+st.axBizAge+" ปี เริ่มเห็นรูปแบบลูกค้าและค่าใช้จ่าย คุณจะขยาย รักษาขนาด หรือขายต่อ";
+ case "social":return "ในกิจกรรมเปิดสำหรับผู้ใหญ่ คุณได้รู้จัก "+name(st,e.age)+" ทั้งคู่คุยเรื่องความสนใจและชีวิตประจำวัน จะทำความรู้จักต่อไหม";
+ case "socialfollow":return st.axSocial+" ที่คุณเลือกทำความรู้จักเมื่ออายุ "+st.axSocialAge+" ปี ชวนพบกันอีกครั้ง ทั้งคู่ยังมีสิทธิเลือกว่าจะเป็นเพื่อนหรือค่อยๆ สานต่อ";
+ default:return e.story;
+ }};
+W.choices=(e,st,s)=>{
+ if(e.cw!=="adultx")return prior.choices(e,st,s);
+ const t=s.stats,a=e.age,nm=name(st,a);
+ const interview=(bonus,label,d)=>{const v=.34*t.skill+.25*t.discipline+.18*t.social+.13*t.knowledge+.1*t.energy-.12*Math.max(0,t.stress-50)+bonus;return c(label,v>=42?"ผ่านการคัดเลือกในเกมและได้รับข้อเสนอ ยังต้องเลือกรับงาน":"ไม่ผ่านครั้งนี้ คุณยังเตรียมตัวแล้วลองใหม่ได้",d,{axInterviewYear:a,axInterviewJob:st.careerPlan,axInterviewResult:v>=42?"offer":"retry"});};
+ switch(e.ax){
+ case "interview":return [interview(6,"อธิบายความรู้และประสบการณ์ตามจริง",{confidence:2,experience:2}),interview(2,"นำตัวอย่างงานที่เคยฝึกมาแสดง",{skill:2,experience:2}),c("ขอเลื่อนเพื่อเตรียมตัว","ยังไม่เข้ารับการคัดเลือก",{knowledge:3,energy:3},{axInterviewYear:a,axInterviewJob:st.careerPlan,axInterviewResult:"retry"}),c("ทบทวนเส้นทางอาชีพ","ยังไม่เริ่มงานและสามารถเลือกเส้นทางใหม่",{experience:3},{careerPlan:"",careerPhase:"",axInterviewYear:a,axInterviewJob:st.careerPlan,axInterviewResult:"retry"})];
+ case "jobsearch":return [c("ส่งใบสมัครและไปพูดคุย","นายจ้างเสนอช่วงทดลองงาน",{experience:2},{axTrial:a}),c("ฝึกทักษะก่อนสมัคร","คุณพัฒนาตนเอง",{skill:4,knowledge:2}),c("ทดลองรับงานอิสระ","คุณเริ่มรับงานเล็กๆ และได้ค่าตอบแทน",{skill:3,m:800},{mode:"อิสระ",everWorked:"ใช่"}),c("ยังไม่พร้อมทำงาน","คุณยังหางานในอนาคตได้",{energy:3,h:2})];
+ case "trial":{const pass=(t.discipline+t.skill+t.energy)/3>=38;return [c("ทำตามหน้าที่และขอคำแนะนำ",pass?"ผ่านทดลองงานและได้รับสัญญางานทั่วไป":"ยังไม่ผ่านทดลองงาน ได้ค่าตอบแทนช่วงที่ทำ",{skill:4,m:1200,experience:3},pass?{axTrial:-1,mode:"งานประจำ",everWorked:"ใช่",workRole:"พนักงาน"}:{axTrial:-1}),c("ขอฝึกเพิ่มก่อนประเมิน","ยังไม่ได้เริ่มงานถาวร แต่ได้ฝึก",{skill:5,m:900},{axTrial:-1}),c("ขอหยุดเพราะงานไม่เหมาะ","คุณกลับไปสำรวจงานอื่น",{experience:3},{axTrial:-1}),c("รับค่าตอบแทนแล้วพัก","ยังไม่รับงานต่อ",{m:600,energy:3},{axTrial:-1})];}
+ case "meet":{const set={axWork:workKey(st),axMode:st.mode,axStart:a,axContact:nm,axTask:"",axWins:0};return [c("เปิดใจแลกเปลี่ยนวิธีทำงาน","เริ่มสร้างความสัมพันธ์กับ "+nm,{friend:3,network:3},{...set,axBond:"close"}),c("ค่อยๆ ทำความรู้จัก","ทั้งคู่พูดคุยอย่างสุภาพ",{skill:2,network:2},{...set,axBond:"polite"}),c("คุยเฉพาะเรื่องงาน","คุณรักษาขอบเขต",{selfcontrol:2},{...set,axBond:"work"}),c("รักษาระยะและเน้นงานตัวเอง","ไม่ผูกความสัมพันธ์นอกงาน",{discipline:2},{...set,axBond:"distance"})];}
+ case "task":return [c("ตรวจรายละเอียดและทำตามมาตรฐาน","ใช้เวลาเพิ่มเพื่อรักษาคุณภาพ",{skill:4,reliable:3,energy:-3},{axTask:"care",axTaskAge:a}),c("ขอความช่วยเหลือและแบ่งขอบเขต","งานเดินหน้าตามข้อตกลง",{problem:4,network:3},{axTask:"scope",axTaskAge:a}),c("เร่งส่งงานทั้งที่ยังตรวจไม่ครบ","งานส่งเร็วแต่มีความเสี่ยง",{career:2,reliable:-3,stress:5},{axTask:"rush",axTaskAge:a}),c("แจ้งว่าไม่สามารถรับเพิ่มได้","รักษาคุณภาพงานเดิม",{h:3,energy:3,reliable:1})];
+ case "result":{const good=st.axTask!=="rush"&&t.skill>=30, set={axTask:"",axWins:(st.axWins||0)+(good?1:0)};return [c("รับฟังผลและแก้ส่วนที่ยังมีปัญหา",good?"งานได้รับการยอมรับและเพิ่มความเชื่อมั่น":"งานต้องแก้เพิ่มเติม แต่คุณรับผิดชอบตามจริง",good?{career:5,skill:3,reliable:4,m:1200}:{skill:4,stress:3,reliable:2},set),c("ขอประเมินร่วมกับผู้เกี่ยวข้อง","ได้รับข้อเสนอแนะและปรับวิธีทำงาน",{problem:4,skill:3},set),c("หลบเลี่ยงข้อร้องเรียน","ความน่าเชื่อถือลดลงและเรื่องยังไม่จบ",{reliable:-5,stress:5}),c("ส่งมอบงานตามข้อตกลงแล้วพัก","ปิดงานโดยไม่รับภาระเพิ่ม",{energy:4,h:2},{axTask:""})];}
+ case "progress":return [c("เจรจาค่าตอบแทนและรับงานท้าทาย","ผลงานช่วยเพิ่มอำนาจต่อรอง",{career:7,m:2500,stress:3},{axWins:0}),c("พัฒนาฝีมือโดยยังไม่รับภาระเพิ่ม","คุณเพิ่มความชำนาญ",{skill:6,knowledge:3},{axWins:0}),c("รักษารูปแบบงานเดิม","มีเวลาให้ชีวิตส่วนตัว",{h:4,energy:4},{axWins:0}),c("สำรวจทางเลือกอื่นก่อน","ยังไม่ได้ลาออกหรือเปลี่ยนอาชีพ",{experience:3,confidence:2},{axWins:0})];
+ case "ethics":return [c("ปฏิเสธข้อเสนอ","รักษามาตรฐานโดยไม่รับผลประโยชน์",{i:4,reliable:3},{axEthics:"refused",axEthicsAge:a}),c("แจ้งเรื่องตามช่องทางที่เหมาะสม","เรื่องเข้าสู่กระบวนการตรวจสอบ",{responsibility:4,fair:4,stress:2},{axEthics:"reported",axEthicsAge:a}),c("รับเงินและยอมให้ข้อยกเว้น","ได้เงินแต่เกิดความเสี่ยงทางความน่าเชื่อถือ",{m:9000,i:-8,fair:-5},{axEthics:"accepted",axEthicsAge:a}),c("ถอนตัวโดยไม่รับเงิน","เว้นระยะจากข้อเสนอโดยยังไม่แจ้งเรื่อง",{selfcontrol:3},{axEthics:"refused",axEthicsAge:a})];
+ case "ethicsfollow":return [c("เล่าข้อเท็จจริงและยอมรับส่วนของตัวเอง",st.axEthics==="accepted"?"คืนผลประโยชน์และรับผลของการกระทำ":"ให้ข้อมูลที่ตรวจสอบได้",st.axEthics==="accepted"?{m:-9000,career:-4,i:3,reliable:-5}:{i:3,reliable:4},{axEthics:""}),c("ขอคนกลางช่วยตรวจสอบ","ให้ความร่วมมือกับกระบวนการ",{problem:3,stress:2},{axEthics:""}),c("ไม่ให้ความร่วมมือ","ความน่าเชื่อถือเสียหาย เรื่องยังไม่จบ",{reliable:-6,stress:6}),c("ขอจัดการตามขั้นตอนที่เป็นธรรม","เรื่องถูกส่งให้ผู้เกี่ยวข้องพิจารณา",st.axEthics==="accepted"?{career:-5,reliable:-4,stress:3}:{fair:3,reliable:2},{axEthics:""})];
+ case "reunion":return [c("นัดคุยและถามสารทุกข์สุกดิบ","รักษามิตรภาพจากอดีต",{friend:5,network:3,h:3}),c("คุยโทรศัพท์ตามสะดวก","ได้แลกเปลี่ยนข่าวชีวิต",{friend:3,h:2}),c("คุยเฉพาะงาน","อีกฝ่ายรับรู้ขอบเขต",{selfcontrol:2},{axBond:"work"}),c("บอกว่าไม่อยากติดต่อส่วนตัว","ยุติการติดต่อส่วนตัวชัดเจน",{selfcontrol:3},{axBond:"distance"})];
+ case "layoff":return [c("เจรจาปรับหน้าที่และภาระ","ยังมีงานแต่ต้องรักษาผลงาน",{career:-2,security:3}),c("ยอมรับการยุติการจ้างและตั้งหลัก","ออกจากงานโดยเก็บประสบการณ์ไว้",{m:3000,career:-6,stress:5},{profession:"",mode:"พักที่บ้าน",careerPhase:"",careerPlan:"",axTask:"",leadRole:"",projectTeam:false}),c("ขอเวลาหางานใหม่","เริ่มสำรวจทางเลือก",{network:3,experience:3}),c("ทำงานตามข้อตกลงเดิมจนกว่าจะมีข้อสรุป","รักษาสิทธิและยังไม่ออกจากงาน",{responsibility:3,stress:2})];
+ case "pair":{const set={axPartner:st.partnerName,axPairAge:a};return [c("จัดเวลาร่วมกันและตกลงเรื่องภาระ","ได้เวลาที่มีความหมาย",{partner:5,h:3},{...set,axPair:"kept"}),c("ทำกิจกรรมง่ายๆ ตามกำลัง","ไม่ต้องใช้เงินมากเพื่อมีความสุข",{partner:4,h:4},{...set,axPair:"kept"}),c("เลื่อนนัดเพราะมีสิ่งอื่นที่ต้องทำ","อีกฝ่ายผิดหวังและอยากคุยอีกครั้ง",{partner:-4,stress:2},{...set,axPair:"missed"}),c("บอกตรงๆ ว่าอยากพักและนัดใหม่","สื่อสารความต้องการโดยไม่บังคับกัน",{energy:4,partner:1},{...set,axPair:"kept"})];}
+ case "pairfollow":return [c("รับฟังและปรับข้อตกลงร่วมกัน","ทั้งคู่ได้พื้นที่พูดคุย",{partner:5,stress:-3},{axPair:""}),c("กลับไปทำสิ่งที่เคยสนุกด้วยกัน","สร้างความทรงจำใหม่",{h:5,partner:4},{axPair:""}),c("ไม่อยากคุยเรื่องเดิม","อีกฝ่ายยังรู้สึกไม่ถูกรับฟัง",{partner:-4,stress:4}),c("ขอเวลาคิด","ยังไม่สรุปเรื่องความสัมพันธ์",{patience:3,energy:2},{axPair:""})];
+ case "child":{const ch=child(st,a),set={axChildName:ch.name,axChildBorn:ch.born,axChildAge:a};return [c("หาเวลาไปร่วมงาน","ลูกเห็นว่าคุณให้ความสำคัญ",{child:5,h:3,energy:-2},{...set,axChild:"kept"}),c("แจ้งข้อจำกัดและตกลงเวลาอื่น","รับฟังลูกและยังรักษาภาระอื่น",{child:3,responsibility:3},{...set,axChild:"kept"}),c("ไม่ไปและให้ลูกจัดการเอง","ลูกผิดหวังและอยากให้เข้าใจ",{child:-4},{...set,axChild:"missed"}),c("ชวนคนที่ลูกไว้ใจไปด้วยและคุยหลังงาน","ลูกยังมีคนสนับสนุน",{child:2,problem:2},{...set,axChild:"kept"})];}
+ case "childfollow":return [c("ฟังลูกและยอมรับความรู้สึก","ลูกได้เล่าเรื่องที่สำคัญสำหรับตัวเอง",{child:5,e:3},{axChild:""}),c("ทำกิจกรรมที่ลูกเลือก","สร้างความทรงจำร่วมกัน",{child:4,h:3},{axChild:""}),c("บอกว่าเรื่องนั้นผ่านไปแล้ว","ลูกยังรู้สึกไม่ถูกเข้าใจ",{child:-4,stress:2}),c("ถามว่าครั้งต่อไปอยากให้ช่วยอย่างไร","ลูกมีส่วนเลือกข้อตกลง",{child:4,responsibility:2},{axChild:""})];
+ case "biz":return [c("ทดลองกิจการเล็กด้วยทุน 10,000 บาท","เริ่มกิจการจริงและมีต้นทุนที่ต้องติดตาม",{m:-10000,assets:5000,skill:3},{lateBusiness:1,bizTrouble:false,axBizAge:a,axBizAsset:5000}),t.m>=50000?c("ลงทุนกิจการที่มีผู้ช่วย 50,000 บาท","เริ่มกิจการใหญ่ขึ้นและมีภาระบริหาร",{m:-50000,assets:30000,career:3},{lateBusiness:2,bizTrouble:false,axBizAge:a,axBizAsset:30000}):c("ศึกษากิจการขนาดใหญ่ก่อน","ยังไม่ลงทุน",{knowledge:4}),c("สำรวจตลาดและหารือกับคนที่ไว้ใจ","ยังไม่ผูกเงินทุน",{knowledge:4,network:2}),c("ไม่เปิดกิจการตอนนี้","รักษาเส้นทางเดิม",{h:3,energy:2})];
+ case "bizfollow":{const good=t.skill>=45&&t.reliable>=50;return [t.m>=6000&&st.lateBusiness<4?c("ขยายกิจการด้วยทุน 6,000 บาท",good?"กิจการรับลูกค้าเพิ่มได้":"ภาระเพิ่มแต่ระบบยังไม่พร้อม",{m:-6000,assets:3000,stress:3},{lateBusiness:st.lateBusiness+1,bizTrouble:!good,axBizAsset:(st.axBizAsset||0)+3000}):c("สำรวจการขยายโดยยังไม่ลงทุน","รักษาเงินสดและขนาดกิจการ",{knowledge:3}),c("คงขนาดและปรับคุณภาพ","รักษาฐานลูกค้าและบริหารต้นทุน",{reliable:4,skill:3}),c("ทบทวนค่าใช้จ่ายและหาคนช่วย","ลดภาระโดยยังไม่ขยาย",{problem:4,energy:2}),c("ขายกิจการตามมูลค่าในเกม","จบภาระและได้เงินจากการขาย",{m:st.axBizAsset||0,assets:-(st.axBizAsset||0)},{lateBusiness:0,bizTrouble:false,axBizAsset:0})];}
+ case "bizcrisis":return [c("ลดขนาดและทบทวนบัญชี","ปรับภาระและแก้ต้นทุน",{problem:4,security:3},{lateBusiness:Math.max(1,st.lateBusiness-1),bizTrouble:false}),t.m>=12000?c("ลงทุนแก้ระบบ 12,000 บาท","ใช้เงินสำรองแก้ปัญหา",{m:-12000,skill:4},{bizTrouble:false}):c("เจรจาปรับแผนกับผู้เกี่ยวข้อง","ยังไม่ได้เติมเงิน",{problem:3,stress:2}),c("ประคองกิจการและยังไม่ตัดสินใจ","ปัญหาค้างและความเครียดเพิ่ม",{stress:5}),c("ปิดกิจการและขายทรัพย์สินที่เหลือ","จบภาระกิจการ",{m:Math.floor((st.axBizAsset||0)/2),assets:-(st.axBizAsset||0)},{lateBusiness:0,bizTrouble:false,axBizAsset:0})];
+ case "wealth":return [c("กันเงินสำรองเพื่ออนาคต","เพิ่มเงินออมและยังมีเงินสดเหลือ",{m:-30000,savings:30000,security:4}),c("จัดทริปพักผ่อน 15,000 บาท","ใช้เงินเพื่อประสบการณ์ที่อยากได้",{m:-15000,h:6,experience:3}),c("ช่วยคนที่ต้องการผ่านช่องทางตรวจสอบได้","แบ่งทรัพยากรให้คนอื่นตามกำลัง",{m:-10000,e:5}),c("ยังไม่ซื้อหรือลงทุนเพิ่ม","รักษาอิสระทางการเงิน",{selfcontrol:2,security:2})];
+ case "ordinary":return [c("พักและทำงานอดิเรก","ใช้เวลาของตัวเอง",{h:5,energy:4}),c("เดินเล่นและกินของอร่อย","พักและเปลี่ยนบรรยากาศ",{h:4,physical:2}),c("ชวนคนรู้จักที่สะดวกมาพบ","เปิดโอกาสให้มีช่วงเวลาดีๆ",{social:3,friend:2,h:2}),c("ทำสิ่งที่ค้างแล้วนอนให้เต็มที่","จัดการชีวิตและได้พัก",{discipline:3,energy:3})];
+ case "lost":return [c("ส่งคืนตามข้อมูลเจ้าของ","เจ้าของได้รับของคืนและขอบคุณ",{i:4,e:2}),c("ฝากกับจุดรับของหาย","ช่วยให้ของกลับไปถึงเจ้าของ",{responsibility:3}),c("เก็บไว้โดยไม่พยายามคืน","ได้ของที่ไม่ใช่ของตนและเสียความซื่อตรง",{m:500,i:-5}),c("แจ้งผู้ดูแลพื้นที่","ส่งต่อให้คนที่รับผิดชอบ",{responsibility:2})];
+ case "social":return [c("แลกช่องทางติดต่อและค่อยๆ รู้จัก","เปิดใจรู้จัก "+nm+" โดยยังไม่ได้คบ",{social:4,friend:2},{axSocial:nm,axSocialAge:a,axSocialBond:"open"}),c("อยากเป็นเพื่อนเท่านั้น","รู้จักกันในขอบเขตเพื่อน",{friend:3},{axSocial:nm,axSocialAge:a,axSocialBond:"friend"}),c("คุยตามมารยาทแล้วแยกย้าย","ไม่จำเป็นต้องเริ่มความสัมพันธ์",{selfcontrol:2}),c("ไม่อยากรู้จักคนใหม่ตอนนี้","รักษาพื้นที่ส่วนตัว",{h:2,energy:2})];
+ case "socialfollow":return [st.axSocialBond==="open"?c("คุยความรู้สึกและลองคบเมื่อทั้งคู่ตกลง","ทั้งคู่ตกลงเริ่มคบอย่างสมัครใจ",{partner:5,h:3},{relationship:"คบกัน",partnerName:st.axSocial,pastRomance:"ใช่",axSocial:""}):c("รักษาความสัมพันธ์แบบเพื่อน","รักษาขอบเขตที่ตกลงกัน",{friend:4},{axSocial:""}),c("ขอเป็นเพื่อนต่อไป","ไม่จำเป็นต้องเป็นคนรัก",{friend:4},{axSocial:""}),c("บอกว่ายังไม่พร้อมพบกัน","ยังไม่ต้องตัดสินใจ",{patience:2},{axSocial:""}),c("ขอไม่สานต่อ","สื่อสารขอบเขตโดยไม่สร้างความหวัง",{selfcontrol:3},{axSocial:""})];
+ default:return e.choices;
+ }};
+W.after=(st,old,e,n,ch,item)=>{
+ prior.after(st,old,e,n,ch,item);
+ if(e.cw!=="adultx")return;
+ const person=(nm,b)=>{if(!nm)return;st.people[nm]={...(st.people[nm]||{}),feeling:b==="distance"?"เว้นระยะ":b==="close"||b==="open"?"รู้สึกดี":"เฉยๆ",boundary:b==="work"?"งานเท่านั้น":b==="distance"?"ไม่ติดต่อ":b==="friend"?"เพื่อนเท่านั้น":b==="polite"?"ยังไม่สนิท":"เปิดใจ"};};
+ if(e.ax==="meet")person(st.axContact,st.axBond);
+ if(e.ax==="reunion"&&n>=2)person(old.axContact,n===2?"work":"distance");
+ if(e.ax==="social"&&st.axSocial)person(st.axSocial,st.axSocialBond);
+ if(e.ax==="socialfollow"&&old.axSocial&&n>=1)person(old.axSocial,n===1?"friend":n===3?"distance":"polite");
+};
+})(window);
