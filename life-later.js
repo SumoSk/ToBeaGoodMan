@@ -2080,8 +2080,8 @@ const c=(label,result,delta,set,n)=>({label,result,delta,set,baseIndex:n});
 const intro=(k,s)=>{const p=by.get(k),d=details.get(k),match=(s.stats[p[3]]??0)>=p[4];return {p,d,match};};
 for(const g of groups)S.push({id:"womanselect_"+g[0],age:g[1],order:89.1,title:g[2],story:g[3],cw:"womanselect",wg:g[0],custom:true,choices:[0,1,2,3].map(n=>c(n===3?"ไม่เลือกใคร":n===2?"รู้จักทั้งสองในฐานะเพื่อน":"เลือกทำความรู้จัก "+by.get(g[n+4])[1],"คุณตัดสินใจว่าจะใช้เวลาทำความรู้จักใคร",{}, {},n))});
 W.allowed=(e,st,s)=>{
- if(e.cw==="womanselect"){const g=gm.get(e.wg);return free(st)&&!st.womenGroups?.[g[0]]&&[g[4],g[5]].every(k=>!h(st,k)&&!st.people?.[by.get(k)[1]]);}
- if(e.cw==="womanstory"&&!e.womanStage){const g=groupBy.get(e.womanKey);if(g&&st.womenGroups?.[g[0]])return false;if(!free(st)&&w.LIFE_HEALTH.roll(s,e.age,1900+profiles.findIndex(p=>p[0]===e.womanKey))>.25)return false;}
+ if(e.cw==="womanselect"){const g=gm.get(e.wg);return !st.womenGroups?.[g[0]]&&[g[4],g[5]].every(k=>!h(st,k)&&!st.people?.[by.get(k)[1]]);}
+ if(e.cw==="womanstory"&&!e.womanStage){const g=groupBy.get(e.womanKey);if(g&&st.womenGroups?.[g[0]])return false;}
  if(e.cw==="healthstory"&&e.hsType==="follow"&&st.healthArc?.status==="treated"&&s.stats.physical>=65&&s.stats.energy>=45&&s.stats.stress<=60&&e.age-(st.healthArc.lastAge??e.age)<5)return false;
  if(st.healthArc?.status&&e.age>=18&&(e.flex==="healthrisk"||e.cw==="elderx"&&e.elderx==="health"||e.later==="healthcare"))return false;
  return prev.allowed(e,st,s);
@@ -2189,4 +2189,52 @@ W.choices=(e,st,s)=>{
  return b;
 };
 w.LIFE_RECURRENCE={context,record};
+})(window);
+
+
+// Career decisions follow actual offers or problems; adult romantic encounters remain available while partnered.
+(function(w){
+"use strict";
+const W=w.CAREER_WORLD,prev={allowed:W.allowed,story:W.story,choices:W.choices,after:W.after},profiles=w.WOMEN_STORIES.profiles,by=new Map(profiles.map(p=>[p[0],p]));
+const paired=st=>!!st.partnerName&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship);
+const working=st=>st.lateWork!=="retired"&&["งานประจำ","งานประจำควบธุรกิจ","ธุรกิจ","อิสระ"].includes(st.mode);
+const c=(label,result,delta,set,n)=>({label,result,delta,set,baseIndex:n});
+const stub=()=>[0,1,2,3].map(n=>c("ทางเลือก "+(n+1),"ผลการตัดสินใจ",{}, {},n));
+const info={
+strain:["งานเริ่มกินเวลาชีวิต","งานที่รับผิดชอบกระทบเวลาพักหรือความมั่นคง คนใกล้ตัวทักว่าคุณดูเหนื่อยผิดปกติ ผู้เกี่ยวข้องเสนอให้คุยเรื่องการปรับภาระ","หลังคุยเรื่องข้อจำกัด คุณต้องตัดสินใจว่าจะปรับงานเดิมหรือสำรวจทางเลือกใหม่"],
+headhunt:["บริษัทคู่แข่งส่งข้อเสนอมา","ผลงานที่สะสมทำให้บริษัทอื่นติดต่อเข้ามา เสนอบทบาทและค่าตอบแทนใหม่ แต่เวลางานและสภาพแวดล้อมยังไม่แน่นอน","ผู้ติดต่อส่งรายละเอียดมาให้ คุณมีงานเดิมที่กำลังไปได้ดีและไม่จำเป็นต้องย้าย"],
+venture:["คนรู้จักชวนเปิดกิจการ","คนรู้จักเห็นฝีมือและชวนทดลองทำธุรกิจขนาดเล็ก โดยไม่ต้องลาออกทันที คุณต้องพิจารณาเงินทุนและเวลา","หลังทราบต้นทุนและภาระ คุณต้องเลือกระหว่างทดลองกิจการกับรักษาแผนเดิม"],
+requested:["โอกาสสำรวจเส้นทางใหม่","หลังคุณแสดงความสนใจสำรวจอาชีพ มีคนแนะนำให้คุยกับผู้ที่ทำงานสายอื่นและดูเงื่อนไขจริง","คุณทราบเงื่อนไขแล้ว จะเริ่มสำรวจอาชีพจริงหรือรักษาเส้นทางเดิม"]
+};
+function type(st,s,a){const t=s.stats,h=st.workOffer||{};if(st.careerPlan||st.careerMenu||["training","foundation"].includes(st.careerPhase)||["student","applying"].includes(st.youthStatus))return "";if((st.qCareerRequest||0)>(h.request||0))return "requested";if(!working(st))return "";if(t.stress>=78||t.energy<=25||t.security<25)return "strain";if(st.mode==="งานประจำ"&&t.career>=55&&t.reliable>=60&&t.skill>=45&&w.LIFE_HEALTH.roll(s,a,3901)<.22)return "headhunt";if(st.mode==="งานประจำ"&&!st.lateBusiness&&t.m>=30000&&t.ambition>=65&&t.skill>=45&&w.LIFE_HEALTH.roll(s,a,3902)<.15)return "venture";return "";}
+for(let a=18;a<=99;a++)for(let j=0;j<2;j++)w.STORY.push({id:"workopportunity_"+j+"_"+a,age:a,order:45.6+j*.05,title:j?"ข้อสรุปจากโอกาสเรื่องงาน":"เหตุการณ์ที่ทำให้ต้องทบทวนเรื่องงาน",story:"เหตุการณ์จากสถานการณ์การทำงาน",cw:"workopportunity",woStage:j,custom:true,choices:stub()});
+for(const p of profiles.filter(p=>p[2]>=18&&p[2]<=94))w.STORY.push({id:"woman_consequence_"+p[0],age:p[2]+2,order:89.8,title:"เรื่องที่ต้องพูดให้ชัดกับ "+p[1],story:"ผลจากความสัมพันธ์ที่เริ่มขึ้นครั้งก่อน",cw:"womanconsequence",womanKey:p[0],custom:true,choices:stub()});
+W.allowed=(e,st,s)=>{
+ if(e.flex==="jobshift")return false;
+ if(e.cw==="workopportunity"){const h=st.workOffer||{};if(e.woStage)return h.age===e.age&&h.status==="consider";const k=type(st,s,e.age);return !!k&&(k==="requested"||e.age-(h.age??-100)>=7&&e.age-(h.byType?.[k]??-100)>=12);}
+ if(e.cw==="womanconsequence"){const h=st.womenDilemmas?.[e.womanKey];return h?.route==="secret"&&h.age<e.age;}
+ return prev.allowed(e,st,s);
+};
+w.WORK_OPPORTUNITY={story(e,st,s){const k=e.woStage?st.workOffer?.type:type(st,s,e.age);return info[k]?.[e.woStage?2:1]||e.story;}};
+W.story=(e,st)=>{
+ if(e.cw==="workopportunity")return e.woStage?info[st.workOffer?.type]?.[2]||e.story:e.story;
+ if(e.cw==="womanstory"&&e.womanStage&&paired(st)&&e.age>=18){const p=by.get(e.womanKey);return prev.story(e,st)+" "+p[1]+" ชวนพบกันเป็นการส่วนตัว คุณยังคบกับ "+st.partnerName+" อยู่ คุณจะวางขอบเขตกับคนที่เข้ามาอย่างไร";}
+ if(e.cw==="womanconsequence"){const h=st.womenDilemmas[e.womanKey],p=by.get(e.womanKey);return "หลังแอบนัดกับ "+p[1]+" เมื่ออายุ "+h.age+" ปี เธอเริ่มถามถึงสถานะที่ไม่ชัดเจน"+(paired(st)&&st.partnerName===h.partner?" ขณะเดียวกัน "+h.partner+" สังเกตว่าคุณมีเรื่องที่ไม่เคยบอก":" แม้ความสัมพันธ์เดิมเปลี่ยนไป เรื่องที่เคยปิดบังยังค้างอยู่")+" คุณต้องเลือกว่าจะจัดการเรื่องนี้อย่างไร";}
+ return prev.story(e,st);
+};
+W.choices=(e,st,s)=>{
+ if(e.cw==="workopportunity"){const k=e.woStage?st.workOffer?.type:type(st,s,e.age),set=(status,extra={})=>({workType:k,workStatus:status,...extra});if(!e.woStage){const label={strain:"ขอคุยเรื่องภาระงานและทางเลือก",headhunt:"ขอรายละเอียดตำแหน่งและค่าตอบแทน",venture:"นัดคุยเรื่องต้นทุนและความรับผิดชอบ",requested:"นัดคุยกับคนในสายงานที่สนใจ"}[k]||"ขอข้อมูลเพิ่มเติม";return [c(label,"คุณได้รับข้อมูลและยังไม่ได้ลาออก",{problem:3,experience:2},set("consider"),0),c("ขอทบทวนรายละเอียดกับคนที่ไว้ใจ","คุณมีเวลาคิดก่อนตอบรับ",{patience:3,stress:-2},set("consider"),1),c("ปฏิเสธและรักษาแผนเดิม","คุณไม่จำเป็นต้องเปลี่ยนเส้นทางเพียงเพราะมีทางเลือก",{selfcontrol:3,security:2},set("closed"),2),c("ยังไม่รับปากและขอเก็บข้อเสนอไว้","เรื่องนี้จบโดยไม่มีการเปลี่ยนงาน",{patience:2},set("closed"),3)];}
+ if(k==="headhunt")return [c("รับตำแหน่งใหม่ในสายอาชีพเดิมหลังตกลงเงื่อนไข","คุณย้ายองค์กรโดยยังใช้วิชาชีพเดิม",{career:4,security:2,stress:3},set("closed",{accept:"employer"}),0),c("นำข้อเสนอไปเจรจากับองค์กรเดิม","คุณคุยเรื่องบทบาทใหม่โดยยังไม่ลาออก",{career:2,confidence:3},set("closed"),1),c("อยู่กับทีมเดิมเพราะยังมีโครงการที่อยากทำ","คุณรักษาความต่อเนื่องของงาน",{reliable:3,security:3},set("closed"),2),c("ขอสำรวจอาชีพอื่นก่อนตัดสินใจ","คุณเปิดโอกาสศึกษาทางเลือกใหม่",{knowledge:3,experience:2},set("closed",{accept:"explore"}),3)];
+ if(k==="venture")return [s.stats.m>=5000&&!st.lateBusiness?c("ทดลองกิจการควบงานเดิม ลงทุน 5,000 บาท","คุณเริ่มธุรกิจขนาดเล็กและยังมีรายได้จากงานเดิม",{m:-5000,skill:4,energy:-4},set("closed",{accept:"venture"}),0):c("ยังไม่ลงทุนและขอดูข้อมูลเพิ่ม","คุณไม่ลงเงินหรือเปิดกิจการซ้ำ",{problem:3},set("closed"),0),c("ทดลองต้นแบบโดยยังไม่ร่วมลงทุน","คุณเรียนรู้ก่อนรับความเสี่ยง",{problem:4,skill:2},set("closed"),1),c("ปฏิเสธและให้ความสำคัญกับงานเดิม","คุณรักษาทรัพยากรและเวลา",{security:3,energy:2},set("closed"),2),c("สำรวจแนวธุรกิจอื่นก่อน","คุณยังไม่รับข้อเสนอ",{knowledge:3},set("closed",{accept:"explore"}),3)];
+ return [c(k==="strain"?"ปรับภาระและเวลางานโดยยังอยู่ที่เดิม":"เริ่มสำรวจอาชีพที่สนใจ","คุณวางแผนโดยยังไม่ได้ลาออก",k==="strain"?{energy:7,stress:-7,career:-1}:{knowledge:3,experience:3},set("closed",k==="strain"?{}:{accept:"explore"}),0),c("ศึกษาทางเลือกอาชีพอื่นอย่างเป็นขั้นตอน","ระบบเปิดโอกาสสำรวจใหม่โดยยังไม่ลาออก",{problem:4,confidence:2},set("closed",{accept:"explore"}),1),c("รักษางานเดิมและปรับเฉพาะสิ่งที่จำเป็น","คุณไม่ต้องทิ้งงานที่มีอยู่",{security:3,energy:3},set("closed"),2),c("พักและกลับไปทบทวนภาระของตัวเอง","คุณลดแรงกดดันโดยยังไม่เปลี่ยนงาน",{h:3,energy:4},set("closed"),3)];}
+ if(e.cw==="womanstory"&&e.womanStage&&paired(st)&&e.age>=18){const p=by.get(e.womanKey),n=p[1],match=(s.stats[p[3]]??0)>=p[4],set=(route,more={})=>({womanRoute:route,womanName:n,...more});return [c("บอก "+n+" ว่าคุณมีคนรักแล้วและรักษาขอบเขต","เธอเข้าใจคำตอบและคุณรักษาความสัมพันธ์เดิม",{i:4,partner:3,selfcontrol:2},set("friend"),0),c("พบกันแบบเพื่อนโดยไม่ปิดบังคนรัก","ทั้งคู่ยังเป็นเพื่อนโดยไม่ต้องสร้างความเข้าใจผิด",{friend:3,partner:2},set("friend"),1),c("แอบตอบรับนัดส่วนตัวโดยไม่บอกคนรัก",match?n+" ตอบรับและความรู้สึกเริ่มซับซ้อน คุณมีเรื่องที่ปิดบังคนรัก":n+" ไม่อยากเริ่มเรื่องที่ต้องปิดบังและขอเว้นระยะ",match?{h:3,partner:-5,i:-4,stress:3}:{i:-2,confidence:-1},set(match?"interest":"end",match?{dilemma:"secret"}:{}),2),c("ขอจัดการความสัมพันธ์เดิมก่อนโดยไม่ให้คำสัญญา","เธอไม่ได้รับปากว่าจะรอ คุณต้องตัดสินใจชีวิตคู่เอง",{patience:3,confidence:2},set("friend"),3)];}
+ if(e.cw==="womanconsequence"){const p=by.get(e.womanKey),h=st.womenDilemmas[p[0]],name=p[1],current=paired(st)&&st.partnerName===h.partner,close={dilemmaEnd:true};return [c(current?"บอกความจริงกับคนรักและยุติการนัดลับ":"พูดความจริงและจัดการเรื่องที่ค้าง","คุณหยุดปิดบัง แต่ความไว้ใจต้องใช้เวลา",{i:4,partner:-3,responsibility:3,stress:-2},close,0),c("ยุติการนัดกับ "+name+" และขอโทษ","เธอเว้นระยะและคุณยังต้องรับผิดชอบการตัดสินใจเดิม",{selfcontrol:4,friend:-3},close,1),c(current?"แยกทางกับคนรักเดิมก่อนคิดเริ่มใหม่":"ขอเริ่มใหม่โดยไม่ปิดบังอีก",name+" ขอเวลาคิดและไม่ได้รับปากว่าจะคบ",{partner:-5,i:2,stress:3},{...close,breakOld:current},2),c("ปฏิเสธจะอธิบายและปล่อยให้เรื่องค้าง","ความไว้ใจลดลงและเรื่องนี้กลายเป็นประวัติชีวิต",{i:-5,partner:-6,reliable:-3,stress:5},close,3)];}
+ return prev.choices(e,st,s);
+};
+W.after=(st,old,e,n,ch,item)=>{
+ prev.after(st,old,e,n,ch,item);const q=item.careerSet||ch.set||{};
+ if(e.cw==="workopportunity"){const h=old.workOffer||{},k=q.workType;st.workOffer={...h,age:item.age,type:k,status:q.workStatus||"closed",request:old.qCareerRequest||0,byType:{...(h.byType||{}),[k]:item.age}};if(q.accept==="employer")st.careerHistory=[...(st.careerHistory||[]),{name:"เปลี่ยนองค์กรในสายงานเดิม",age:item.age}];if(q.accept==="venture"){st.lateBusiness=1;st.mode="งานประจำควบธุรกิจ";st.bizTrouble=false;}if(q.accept==="explore"){st.qCareerRequest=(old.qCareerRequest||0)+1;st.workOffer.request=st.qCareerRequest;}}
+ if(e.cw==="womanstory"&&q.dilemma==="secret")st.womenDilemmas={...(old.womenDilemmas||{}),[e.womanKey]:{route:"secret",age:item.age,partner:old.partnerName}};
+ if(e.cw==="womanconsequence"){const h=old.womenDilemmas?.[e.womanKey];st.womenDilemmas={...(old.womenDilemmas||{}),[e.womanKey]:{...h,route:"closed"}};if(q.breakOld&&st.partnerName===h?.partner){st.relationship="แยกทาง";st.partnerName="";st.married="";st.teenBond="";st.coupleLoop="";}}
+};
 })(window);
