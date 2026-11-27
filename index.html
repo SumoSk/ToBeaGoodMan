@@ -385,9 +385,9 @@ function sceneGenderNames(e,st,title,story,choices){
  if(e.id.startsWith("kid_pal")&&st.kidPal)pref.push(st.kidPal);
  if(e.id==="familykid_friendvisit"&&st.fkGuest)pref.push(st.fkGuest);
  if(e.flex==="reopen"){const match=story.match(/([^ \n()]+) \(คนที่พบเมื่ออายุ \d+ ปี\)/);if(match&&personGender(match[1]))pref.push(match[1]);}
- const present=[...new Set([...pref,...genderMentions(title,pref),...genderMentions(story,pref),...choices.flatMap(c=>genderMentions(c.label,pref))])].filter(n=>personGender(n));
+ const present=[...new Set([...genderMentions(title,pref),...genderMentions(story,pref),...choices.flatMap(c=>genderMentions(c.label,pref))])].filter(n=>personGender(n));
  // Dynamic names that include a year retain the original identity in contacts; show only the nickname here.
- for(const n of [st.candidate,st.partnerName,...(st.children||[]).map(c=>c.name)])if(n&&personGender(n)&&[title,story,...choices.map(c=>c.label)].some(x=>String(x||"").includes(n))&&!present.includes(n))present.push(n);
+ for(const n of [st.candidate,st.partnerName,...(st.children||[]).map(c=>c.name)])if(n&&personGender(n)&&n.includes(" (คนที่พบเมื่ออายุ ")&&[title,story,...choices.map(c=>c.label)].some(x=>String(x||"").includes(n))){const base=n.replace(/ \(คนที่พบเมื่ออายุ \d+ ปี\)$/,"");if(!present.includes(base))present.push(base);}
  return [...new Set(present.map(n=>genderName(n)))];
 }
 
