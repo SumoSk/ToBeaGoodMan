@@ -56,3 +56,185 @@ for(let age=22;age<=55;age++)window.STORY.push({id:"later_morechild_"+age,age,or
 {label:"ยังไม่อยากคุยเรื่องนี้",result:"คุณเว้นเวลาให้เรื่องอื่นในชีวิต",delta:{selfcontrol:2,h:2}}]});
 function annual(st,age){const business=st.lateBusiness?(st.bizTrouble?-3000:st.lateBusiness*6000):0,care=st.paidCare&&age>(st.careStart??-1)?st.paidCare===1?18000:45000:0;const children=st.children.filter(c=>age-c.born<18).length*2400;return {business,care,children,net:business-care-children}}
 return {initial,allowed,story,choices,after,annual,arcCount:arcs.length};})();
+
+
+// Youth and admission continuity — preserves existing event IDs and save history.
+(function installYouth(w){
+"use strict";
+const W=w.CAREER_WORLD, S=w.STORY, E=w.EPISODES, L=w.LIFE;
+const prev={allowed:W.allowed,choices:W.choices,after:W.after,story:W.story,delta:L.delta};
+const all=[...S,...E], by=Object.fromEntries(all.map(e=>[e.id,e]));
+const c=(label,result,delta={},set={})=>({label,result,delta,set});
+const placeholders=Array.from({length:4},()=>c("เลือก",""));
+const add=(id,age,order,title,story,type,choices=placeholders)=>S.push({id:"youth_"+id,age,order,title,story,cw:"youth",youth:type,custom:true,choices});
+const story=(id,age,order,title,body,choices,requirements=[])=>S.push({id:"youth_"+id,age,order,title,story:body,custom:true,choices,requirements});
+const fields={doctor:["แพทยศาสตร์",6,66,true],vet:["สัตวแพทยศาสตร์",6,57,true],nurse:["พยาบาลศาสตร์",4,46,true],lawyer:["นิติศาสตร์",4,40,false],engineer:["วิศวกรรมศาสตร์",4,50,true],account:["บัญชี",4,34,false],software:["เทคโนโลยีสารสนเทศ",4,39,false],teacher:["ครุศาสตร์",4,38,false]};
+const plans=[["doctor","vet","nurse","lawyer"],["engineer","software","account","teacher"],["lawyer","account","teacher","software"],["vet","nurse","teacher","account"]];
+const score=t=>Math.round(.69*t.knowledge+.21*t.discipline+.05*t.energy+.05*t.physical-.16*Math.max(0,t.stress-40));
+const passes=(id,st,s)=>{const f=fields[id];return !!f&&score(s.stats)>=f[2]&&(!f[3]||s.answers.studytrack===0||st.foundation)&&s.stats.knowledge>=Math.max(15,f[2]-18)};
+const isGap=st=>st.youthStatus==="gap";
+const isStudent=st=>st.youthStatus==="student";
+const partner=st=>["คบกัน","อยู่ด้วยกัน"].includes(st.relationship);
+const enrolled=(id,age)=>({youthStatus:"student",youthField:id,youthStart:age,youthPlan:"",careerPlan:id,careerPhase:"training",trainingAge:age,careerMenu:"",mode:"เรียนต่อ",goal:W.by[id]?.name||fields[id][0]});
+const gap={youthStatus:"gap",youthPlan:"",careerPlan:"",careerPhase:"",careerMenu:"",mode:"พักที่บ้าน",goal:"เตรียมสอบใหม่"};
+const leave={youthStatus:"left",youthPlan:"",careerPlan:"",careerPhase:"",careerMenu:"",mode:"",goal:""};
+if(by.route){
+ by.route.choices[0].label="ตั้งใจสมัครมหาวิทยาลัยเต็มเวลา";
+ by.route.choices[0].result="คุณตัดสินใจสมัคร ยังต้องผ่านการคัดเลือกก่อน";
+ by.route.choices[1].label="สมัครมหาวิทยาลัยและวางแผนหารายได้เสริม";
+ by.route.choices[1].result="คุณวางแผนเรียนควบคู่หารายได้ ยังต้องผ่านการคัดเลือก";
+}
+L.delta=(e,n)=>e.id==="route"&&n<2?{discipline:1}:prev.delta(e,n);
+for(let age=10;age<=17;age++){
+ story("habit_"+age,age,82,"เวลาหลังเลิกเรียน","ช่วงนี้การบ้านและบทเรียนเริ่มยากขึ้น คุณอยากใช้เวลาหลังเลิกเรียนแบบไหน",[
+ c("ทบทวนบทเรียนทุกวันและนอนให้พอ","พื้นฐานความรู้ค่อยๆ แน่นขึ้น",{knowledge:5,discipline:3,energy:1}),
+ c("ทุ่มอ่านและฝึกโจทย์จนดึก","คุณเรียนรู้มากขึ้นแต่พักผ่อนน้อย",{knowledge:7,discipline:2,energy:-7,physical:-2,stress:5}),
+ c("แบ่งเวลาอ่านและทำสิ่งที่ชอบ","คุณพัฒนาตัวเองและยังมีเวลาสนุก",{knowledge:3,h:3,physical:2}),
+ c("ใช้เวลาว่างกับสิ่งที่ชอบเป็นหลัก","คุณได้พักและประสบการณ์อื่น แต่ไม่ได้ทบทวนเพิ่ม",{h:3,experience:2,knowledge:0})]);
+}
+story("peer_invite",14,74,"วันหยุดที่เพื่อนชวน","เพื่อนในห้องกำลังหาคนไปกินข้าว เล่นเกม และเดินเล่นหลังสอบเสร็จ คุณอยากไปไหม",[
+ c("ไปด้วย","คุณตกลงนัดพบกับเพื่อน",{friend:3,h:3},{youthHangout:"yes"}),
+ c("ชวนไปเล่นกีฬาหรือเดินสวนแทน","เพื่อนบางคนสนใจ แต่ยังไม่ได้ตกลงสถานที่",{physical:2,social:2}),
+ c("ขอกลับบ้านอ่านหนังสือ","คุณได้ใช้เวลากับบทเรียน",{knowledge:4,discipline:2}),
+ c("พักอยู่บ้าน","คุณได้พักโดยไม่ฝืนใจ",{energy:4,h:2})]);
+story("peer_outing",14,75,"มื้อแรกนอกโรงเรียน","หลังตกลงนัดกัน เพื่อนกำลังแบ่งค่าอาหารและเลือกว่าจะไปไหนต่อ มีคนงบไม่พอ",[
+ c("ช่วยออกส่วนที่ขาดเท่าที่ไหว","เพื่อนได้ร่วมกิจกรรมโดยไม่ต้องฝืนจ่าย",{m:-80,friend:4,e:2}),
+ c("เสนอร้านที่ทุกคนจ่ายไหว","ทุกคนได้ร่วมมื้ออาหาร",{problem:3,friend:3}),
+ c("แยกย้ายหลังมื้ออาหาร","คุณกลับตามเวลาที่ตกลง",{energy:3,discipline:2}),
+ c("ชวนเดินเล่นต่อโดยไม่เสียเงิน","คุณได้คุยกับเพื่อนอีกหน่อย",{h:3,social:3})],["youthHangout=yes"]);
+story("school_pressure",15,76,"เสียงในแชตห้อง","มีเพื่อนส่งรูปข้อสอบเก่าและชวนใช้คำตอบที่อาจหลุดมาจากครู คุณยังไม่แน่ใจว่าเป็นของจริง",[
+ c("ไม่เปิดและอ่านจากตำรา","คุณเลือกเตรียมตัวเอง",{knowledge:3,i:3}),
+ c("ถามครูว่าข้อมูลนี้ใช้ได้ไหม","คุณตรวจสอบความถูกต้องก่อน",{responsibility:3,problem:2}),
+ c("ส่งต่อโดยไม่ตรวจสอบ","ข่าวลือแพร่เร็วและเกิดความไม่สบายใจ",{i:-3,stress:4,friend:1}),
+ c("ไม่ยุ่งและปิดแชตพัก","คุณเว้นระยะจากแรงกดดัน",{energy:3,stress:-2})]);
+story("first_job_invite",16,77,"รายได้จากวันหยุด","ร้านใกล้บ้านประกาศรับคนช่วยงานช่วงวันหยุดที่เหมาะกับวัย คุณอยากลองสมัครไหม",[
+ c("ขอคุยรายละเอียดและลองงาน","คุณตกลงทดลองช่วยงานในวันหยุด",{skill:2,responsibility:2},{youthWeekendJob:"yes"}),
+ c("ถามผู้ปกครองก่อนตัดสินใจ","คุณได้ข้อมูลเพิ่มและยังไม่รับงาน",{problem:2,father:1,mother:1}),
+ c("ขอเน้นอ่านหนังสือ","คุณเลือกเตรียมการเรียน",{knowledge:4,discipline:2}),
+ c("ไม่สนใจ อยากพักหรือทำกิจกรรมอื่น","คุณรักษาเวลาว่าง",{h:3,energy:3})]);
+story("first_job_shift",16,78,"วันทดลองงาน","ร้านตอบรับให้คุณช่วยงานในวันหยุดตามที่ตกลงไว้ ลูกค้าหลายคนเข้ามาพร้อมกัน",[
+ c("ถามผู้ดูแลว่าควรจัดคิวอย่างไร","คุณได้ค่าตอบแทนและเรียนรู้การทำงาน",{m:350,skill:4,problem:2}),
+ c("ตั้งใจทำตามหน้าที่","คุณได้รายได้จากงานครั้งแรก",{m:350,skill:3,energy:-2}),
+ c("บอกว่าทำไม่ทันและขอความช่วยเหลือ","คุณเรียนรู้การทำงานเป็นทีม",{m:350,friend:2,skill:2}),
+ c("ขอหยุดหลังจบเวลาที่ตกลง","คุณรักษาเวลาพักและได้รับค่าตอบแทน",{m:350,energy:2,skill:1})],["youthWeekendJob=yes"]);
+story("preexam",17,90,"หนึ่งเดือนก่อนสอบ","การสอบปลายมัธยมใกล้เข้ามาแล้ว ความรู้ที่สะสมมาตลอดและวิธีดูแลตัวเองจะส่งผลต่อความพร้อม คุณจะใช้เวลาช่วงนี้อย่างไร",[
+ c("อ่านเต็มที่จนดึกทุกวัน","คุณฝึกโจทย์มากขึ้น แต่เหนื่อยและกดดัน",{knowledge:9,discipline:4,physical:-4,energy:-13,stress:10}),
+ c("วางตารางอ่าน พัก และออกกำลังกาย","คุณเพิ่มความพร้อมอย่างสม่ำเสมอ",{knowledge:6,discipline:5,energy:6,physical:3,stress:-4}),
+ c("หาเพื่อนติวเฉพาะวิชาที่ไม่ถนัด","คุณเติมช่องว่างบางวิชาและได้แรงสนับสนุน",{knowledge:5,friend:3,problem:3}),
+ c("เตรียมตามกำลังและเผื่อเวลาให้เรื่องอื่น","คุณไม่ทุ่มทั้งหมดกับการสอบ",{knowledge:2,h:3,energy:4})]);
+for(let age=18;age<=99;age++){
+ if(age>18)add("gap_"+age,age,-90,"อีกหนึ่งปีที่ยังไม่มีที่เรียน","คุณยังไม่ได้เข้าเรียนมหาวิทยาลัยตามแผน จะใช้ปีนี้ทำอะไร","gap",[
+ c("มุ่งอ่านหนังสือเต็มเวลา","คุณเพิ่มความรู้ แต่หากพักน้อยจะเสียสมดุล",{knowledge:11,discipline:5,energy:-10,physical:-4,stress:8},{youthPlan:""}),
+ c("อ่านเป็นระบบและดูแลสุขภาพ","คุณพัฒนาพื้นฐานพร้อมรักษาสภาพร่างกาย",{knowledge:8,discipline:4,energy:7,physical:3,stress:-4},{youthPlan:"",mode:"พักที่บ้าน"}),
+ c("ทำงานพิเศษและอ่านควบคู่","คุณมีรายได้และความรู้เพิ่มขึ้นแต่เหนื่อยกว่าเดิม",{m:8500,knowledge:5,skill:4,energy:-5},{youthPlan:"",mode:"อิสระ"}),
+ c("เลิกแผนสอบและเดินเส้นทางอื่น","คุณยังสามารถสำรวจอาชีพและกลับไปเรียนภายหลัง", {experience:3,h:3},leave)]);
+ add("apply_"+age,age,age===18?.6:-89,"เลือกคณะที่จะสมัคร","คุณต้องเลือกกลุ่มคณะที่จะสมัครก่อน ผลสอบจะขึ้นกับความรู้ วินัย สุขภาพ ความเครียด และพื้นฐานที่มี ไม่ใช่เพียงความฝัน","apply",[
+ c("แพทย์ / สัตวแพทย์ / พยาบาล / นิติ","คุณยื่นสมัครเฉพาะกลุ่มนี้",{}, {youthStatus:"applying",youthPlan:"0"}),
+ c("วิศวะ / เทคโนโลยี / บัญชี / ครุศาสตร์","คุณยื่นสมัครเฉพาะกลุ่มนี้",{}, {youthStatus:"applying",youthPlan:"1"}),
+ c("นิติ / บัญชี / ครุศาสตร์ / เทคโนโลยี","คุณยื่นสมัครเฉพาะกลุ่มนี้",{}, {youthStatus:"applying",youthPlan:"2"}),
+ c("สัตวแพทย์ / พยาบาล / ครุศาสตร์ / บัญชี","คุณยื่นสมัครเฉพาะกลุ่มนี้",{}, {youthStatus:"applying",youthPlan:"3"})]);
+ // Up to four admission offers plus retry / leave; stable indices for replay.
+ add("results_"+age,age,age===18?.7:-88,"ผลการคัดเลือก","ผลการสมัครออกแล้ว คุณจะเลือกเส้นทางใด","results",Array.from({length:6},()=>c("เลือก","")));
+ if(age>18){
+ add("study_"+age,age,-87,"ชีวิตนักศึกษา","ตอนนี้คุณกำลังเรียนในสาขาที่สอบเข้าได้ คุณต้องแบ่งเวลาระหว่างการเรียน สุขภาพ เพื่อน และรายได้","study",[
+ c("อ่านและฝึกปฏิบัติอย่างสม่ำเสมอ","คุณเข้าใจเนื้อหามากขึ้น",{knowledge:5,discipline:4,skill:3,energy:-2}),
+ c("อ่านหนักจนแทบไม่พัก","ผลการเรียนดีขึ้นแต่ความล้าเริ่มสะสม",{knowledge:7,discipline:3,stress:8,energy:-9,physical:-3}),
+ c("แบ่งเวลาเรียน พบเพื่อน และพัก","คุณยังพัฒนาความรู้และดูแลตัวเอง",{knowledge:3,friend:3,h:3,energy:4,stress:-2}),
+ c("ทำงานเสริมตามเวลาที่ว่าง","คุณช่วยค่าใช้จ่าย แต่มีเวลาอ่านน้อยลง",{m:3500,skill:3,knowledge:1,energy:-4})]);
+ add("grad_"+age,age,-86,"ประเมินก่อนเรียนจบ","คุณเรียนมาครบระยะขั้นต่ำแล้ว ต้องผ่านการประเมินความรู้และความพร้อมอีกครั้ง","grad",[
+ c("เข้ารับการประเมิน","ผลประเมินขึ้นกับสิ่งที่สะสม",{}),
+ c("ขอเรียนเพิ่มอีกปี","คุณขอเสริมพื้นฐานและพักให้เพียงพอ",{knowledge:5,energy:3,stress:-2}),
+ c("พักและทำงานก่อน","คุณหยุดเรียนตามแผนเดิม",{experience:3,skill:2}),
+ c("ขอออกจากเส้นทางนี้","คุณยังนำความรู้ที่สะสมไปใช้ด้านอื่นได้",{h:3,experience:3})]);
+ }
+}
+const campus=new Set(["campus","campusclub","collegeexam","shift","study1","graduate","career_select","health_choice","law_choice","creative_choice","business_choice"]);
+const studentOnly=new Set(["campus","campusclub","collegeexam","shift","study1"]);
+const oldCareer=new Set(["career_select","health_choice","law_choice","creative_choice","business_choice"]);
+story("campus_invite",19,76,"ชีวิตนอกห้องเรียน","เพื่อนนักศึกษาชวนไปทำกิจกรรมชมรมในวันหยุด คุณอยากลองไหม",[
+ c("ลองเข้าชมรม","คุณสมัครทดลองเข้าร่วม",{social:3,friend:3},{youthClub:"yes"}),
+ c("ชวนไปกินข้าวแทน","คุณเลือกพบเพื่อนแบบไม่ผูกมัด",{h:3,friend:2}),
+ c("กลับไปอ่านหนังสือ","คุณได้ทบทวนเนื้อหา",{knowledge:4,discipline:2}),
+ c("ขอพักคนเดียว","คุณได้เวลาส่วนตัว",{energy:4,stress:-2})],["@youthStatus"]);
+by.route && (by.route.story="หลังจบมัธยม คุณอยากวางแผนชีวิตแบบไหน การเลือกเรียนต่อยังไม่ใช่ผลสอบ");
+story("campus_club",19,77,"งานแรกของชมรม","หลังสมัครเข้าร่วมชมรม เพื่อนเสนอให้ช่วยจัดกิจกรรมเล็กๆ คุณจะรับหน้าที่ไหน",[
+ c("ช่วยวางแผนและแบ่งงาน","งานเป็นระบบและได้รู้จักคนใหม่",{problem:3,friend:3}),
+ c("รับผิดชอบส่วนที่ถนัด","คุณพัฒนาทักษะจากการลงมือ",{skill:4,confidence:2}),
+ c("ลองรับงานหน้าเวที","คุณฝึกสื่อสารในพื้นที่ใหม่",{social:4,confidence:2}),
+ c("ช่วยเท่าที่ไหวแล้วกลับไปอ่าน","คุณรักษาสมดุลระหว่างกิจกรรมกับการเรียน",{knowledge:2,energy:2,friend:2})],["youthClub=yes"]);
+story("adult_intimacy",20,79,"ขอบเขตความสัมพันธ์","คุณกับคนรักที่คบกันอยู่เริ่มคุยถึงความใกล้ชิดทางเพศ ทั้งคู่มีสิทธิ์ตอบตกลงหรือปฏิเสธ และไม่มีใครต้องฝืนใจ",[
+ c("คุยเรื่องความพร้อม ความยินยอม และการป้องกัน","ทั้งคู่ได้ตกลงขอบเขตและไม่เร่งรัดกัน",{partner:4,responsibility:3}),
+ c("บอกว่ายังไม่พร้อม","คุณสื่อสารขอบเขตอย่างชัดเจน",{selfcontrol:3,partner:2}),
+ c("ขอเวลาหาข้อมูลสุขภาพทางเพศ","คุณได้เตรียมความพร้อมโดยไม่ต้องรีบ",{knowledge:3,responsibility:2}),
+ c("เปลี่ยนไปทำกิจกรรมที่ทั้งคู่สบายใจ","คุณให้ความสำคัญกับความสัมพันธ์โดยไม่กดดัน",{h:3,partner:2})],["@partner"]);
+story("adult_money",21,78,"เงินที่เริ่มจัดการเอง","คนรู้จักชวนลองหารายได้จากงานเสริม คุณอยากเลือกอะไรโดยไม่จำเป็นต้องมีเงินลงทุนก้อนใหญ่",[
+ c("ลองรับงานตามทักษะ","คุณเริ่มจากงานขนาดเล็กที่รับผิดชอบไหว",{skill:3,m:600,experience:2}),
+ c("หาข้อมูลก่อนตกลง","คุณตรวจสอบค่าใช้จ่ายและความเสี่ยง",{problem:4,knowledge:2}),
+ c("ตั้งใจเรียนหรือทำงานเดิมก่อน","คุณรักษาเป้าหมายหลัก",{discipline:3,knowledge:2}),
+ c("ไม่รับเพื่อให้มีเวลาพัก","คุณลดภาระช่วงนี้",{energy:4,h:2})]);
+story("adult_trip_invite",22,78,"วันว่างที่ตรงกัน","กลุ่มคนรู้จักชวนเที่ยวต่างจังหวัดหนึ่งวันและกำลังถามว่าใครสนใจ คุณจะตอบอย่างไร",[
+ c("ตกลงไปและวางงบ","คุณร่วมวางแผนเดินทาง",{m:-350,h:3,friend:3},{youthTrip:"yes"}),
+ c("เสนอเที่ยวใกล้บ้านแทน","คุณรักษางบและยังพบเพื่อนได้",{friend:2,h:2}),
+ c("ขออยู่ทำสิ่งที่ค้างไว้","คุณรักษาแผนส่วนตัว",{discipline:3}),
+ c("ปฏิเสธและพัก","คุณได้พักเต็มที่",{energy:4})]);
+story("adult_trip",22,79,"ทริปที่เลือกเอง","หลังตกลงไปเที่ยว กลุ่มของคุณต้องเปลี่ยนแผนเพราะฝนตก เพื่อนบางคนอยากเดินทางต่อ",[
+ c("หาที่พักรอฝนและคุยกัน","คุณเลือกความปลอดภัยและยังสนุกกับเพื่อน",{friend:3,problem:3}),
+ c("เปลี่ยนเป็นกิจกรรมในร่ม","ทุกคนได้ประสบการณ์ใหม่",{h:4,experience:2}),
+ c("กลับบ้านก่อนตามความสะดวก","คุณตัดสินใจตามกำลังของตัวเอง",{energy:3,selfcontrol:2}),
+ c("ช่วยหารือเส้นทางและงบใหม่","กลุ่มได้ตกลงแผนใหม่ร่วมกัน",{problem:4,friend:2})],["youthTrip=yes"]);
+W.allowed=(e,st,s)=>{
+ if(e.cw==="youth"){
+  switch(e.youth){
+   case "gap":return isGap(st);
+   case "apply":return e.age===18?[0,1].includes(s.answers.route)&&!st.youthStatus:isGap(st);
+   case "results":return st.youthStatus==="applying";
+   case "study":return isStudent(st)&&e.age>st.youthStart;
+   case "grad":return isStudent(st)&&e.age>=st.youthStart+(fields[st.youthField]?.[1]||4);
+   default:return false;
+  }
+ }
+ if(e.id==="youth_campus_invite"&&!isStudent(st))return false;
+ if(e.id==="youth_campus_club"&&!isStudent(st))return false;
+ if(e.id==="youth_adult_intimacy"&&!partner(st))return false;
+ if(st.youthStatus){
+  if(e.id==="graduate")return false;
+  if(studentOnly.has(e.id)&&!isStudent(st))return false;
+  if(e.id==="shift"&&s.answers.route!==1)return false;
+  if(oldCareer.has(e.id)&&["applying","gap","student"].includes(st.youthStatus))return false;
+  if(["applying","gap","student"].includes(st.youthStatus)&&["explore","group","extraPage","extraGroups","pick","bridge","train"].includes(e.cw))return false;
+  if(isStudent(st)&&e.cw==="entry"&&e.cwProfession===st.youthField)return false;
+ }
+ return prev.allowed(e,st,s);
+};
+W.choices=(e,st,s)=>{
+ if(e.cw==="youth"&&e.youth==="results"){
+  const ids=plans[Number(st.youthPlan)]||plans[0];
+  return [...ids.map(id=>passes(id,st,s)?c("ยืนยันสิทธิ์ "+fields[id][0],"คุณสอบผ่านและเริ่มเรียน "+fields[id][0],{knowledge:1,confidence:4,h:3},enrolled(id,e.age)):c("ไม่ผ่าน "+fields[id][0]+" — เตรียมสอบใหม่","ผลสอบไม่ถึงเกณฑ์จำลองของสาขานี้หรือยังขาดพื้นฐาน คุณยังไม่ได้เข้าเรียน",{stress:3,confidence:-2},gap)),c("พักหนึ่งปีแล้วสอบใหม่","คุณยังไม่มีที่เรียนและจะมีโอกาสเตรียมสอบอีกครั้ง",{patience:2},gap),c("ไม่เรียนต่อในตอนนี้","คุณเลือกเปิดทางไปทำงานหรือสำรวจเส้นทางอื่น",{experience:3},leave)];
+ }
+ if(e.cw==="youth"&&e.youth==="grad"){
+  const id=st.youthField, f=fields[id];
+  const ready=score(s.stats)>=Math.max(30,f[2]-8)&&s.stats.knowledge>=Math.max(25,f[2]-12);
+  return [ready?c("เข้ารับการประเมินและเรียนจบ","คุณผ่านการประเมินและจบการศึกษา ยังต้องผ่านเงื่อนไขการประกอบอาชีพของเกม",{confidence:5,knowledge:2},{youthStatus:"graduated"}):c("เข้ารับการประเมิน","คุณยังไม่ผ่าน จึงต้องเรียนเสริมก่อนประเมินอีกครั้ง",{stress:4,knowledge:3},{youthStatus:"student"}),c("ขอเรียนเพิ่มอีกปี","คุณขอเสริมพื้นฐานและพักให้เพียงพอ",{knowledge:5,energy:3,stress:-2}),c("พักและทำงานก่อน","คุณออกจากแผนเรียนเดิมและจะได้สำรวจอาชีพใหม่",{skill:2,experience:3},leave),c("ขอออกจากเส้นทางนี้","คุณยังนำความรู้ที่สะสมไปใช้ด้านอื่นได้",{h:3,experience:3},leave)];
+ }
+ if(e.cw==="youth")return e.choices;
+ if(e.cw==="train"){
+  const x=W.by[e.cwProfession], f=fields[e.cwProfession];
+  if(x&&["science","study","law"].includes(x.req)){
+   const required=f?f[2]:Math.max(34,Math.min(58,x.level+14));
+   if(score(s.stats)<required||s.stats.knowledge<required-18){
+    return e.choices.map((v,n)=>n<2?c(n===0?"เตรียมสอบและทบทวนพื้นฐาน":"หารายได้พร้อมเตรียมสอบ","คุณยังไม่ผ่านเกณฑ์เริ่มเรียนของเกม จึงใช้เวลาพัฒนาความพร้อมก่อน ยังไม่ได้เป็นนักศึกษา",n===0?{knowledge:6,discipline:3,energy:-2}:{knowledge:3,skill:3,m:1500,energy:-3},{youthAdmissionDenied:"yes"}):v);
+   }
+  }
+ }
+ return prev.choices(e,st,s);
+};
+W.story=(e,st)=>{
+ if(e.cw==="youth"&&e.youth==="study")return "คุณกำลังเรียน"+(fields[st.youthField]?.[0]||"ในมหาวิทยาลัย")+" ต้องแบ่งเวลาให้บทเรียน การฝึกปฏิบัติ เพื่อน สุขภาพ และรายได้";
+ if(e.cw==="youth"&&e.youth==="results")return "ผลสอบของคณะที่คุณสมัครออกแล้ว เลือกยืนยันได้เฉพาะสาขาที่ผ่าน หรือเลือกเตรียมสอบใหม่โดยไม่จำเป็นต้องรับคณะที่ไม่ต้องการ";
+ return prev.story(e,st);
+};
+W.after=(st,old,e,n,ch,item)=>{
+ if(e.cw==="train"&&ch.set?.youthAdmissionDenied==="yes"){st.careerPhase=old.careerPhase;st.trainingAge=old.trainingAge;return;}
+ prev.after(st,old,e,n,ch,item);
+};
+})(window);
