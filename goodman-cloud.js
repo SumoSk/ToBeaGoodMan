@@ -78,32 +78,32 @@ function loginDialog(scope,done){
 }
 function pinDialog(done){
  const m=modal("ADMIN");m.d.classList.add("gc-pin");
- const sub=node("p","TO BE A GOOD MAN.");sub.className="gc-pin-brand";
- const hint=node("p","กรอก PIN 6 หลัก");hint.className="gc-pin-hint";
+ m.d.setAttribute("aria-label","PIN สำหรับผู้ดูแล");
+ m.d.querySelector("h2").hidden=true;
  const dots=node("div");dots.className="gc-pin-dots";dots.setAttribute("aria-label","จำนวนหลัก PIN");
  const pad=node("div");pad.className="gc-keypad";
- m.body.append(sub,hint,dots,pad);
+ m.body.append(dots,pad);
  let digits="",busy=false;
  const controls=[];
  function display(){dots.replaceChildren();for(let i=0;i<6;i++){const d=node("span");d.className=i<digits.length?"filled":"";dots.append(d)}dots.setAttribute("aria-label","กรอกแล้ว "+digits.length+" จาก 6 หลัก")}
  async function submit(){
-  if(busy||digits.length!==6)return;busy=true;controls.forEach(x=>x.disabled=true);m.msg.textContent="กำลังตรวจสอบ";
+  if(busy||digits.length!==6)return;busy=true;controls.forEach(x=>x.disabled=true);m.msg.textContent="";m.d.setAttribute("aria-busy","true");
   try{
    const r=await request("/functions/v1/life-story-studio-admin",{method:"POST",data:{action:"login",pin:digits}});
    if(!r?.ok||r.role!=="ADMIN"||!r.token)throw Error("รหัส PIN ไม่ถูกต้อง");
    setAdmin({token:r.token,expires_at:r.expires_at});digits="";display();m.d.close();await done();
   }catch(e){digits="";display();m.msg.textContent=e.message?.includes("Too many")?"กรอกผิดหลายครั้ง กรุณาลองอีกครั้งใน 15 นาที":"รหัส PIN ไม่ถูกต้อง หรือยังไม่ได้ตั้งค่า ADMIN"}
-  finally{busy=false;controls.forEach(x=>x.disabled=false)}
+  finally{busy=false;m.d.removeAttribute("aria-busy");controls.forEach(x=>x.disabled=false)}
  }
  function digit(n){if(busy||digits.length>=6)return;m.msg.textContent="";digits+=n;display();if(digits.length===6)submit()}
  function clear(){if(!busy){digits="";display();m.msg.textContent=""}}
  function erase(){if(!busy){digits=digits.slice(0,-1);display();m.msg.textContent=""}}
- for(const n of ["1","2","3","4","5","6","7","8","9","ล้าง","0","⌫"]){
-  const b=node("button",n);b.type="button";if(n==="ล้าง"||n==="⌫")b.className="gc-pin-secondary";if(n==="⌫")b.setAttribute("aria-label","ลบตัวเลขล่าสุด");
-  b.onclick=()=>n==="ล้าง"?clear():n==="⌫"?erase():digit(n);controls.push(b);pad.append(b)
+ for(const n of ["1","2","3","4","5","6","7","8","9","↺","0","⌫"]){
+  const b=node("button",n);b.type="button";if(n==="↺"||n==="⌫")b.className="gc-pin-secondary";if(n==="↺")b.setAttribute("aria-label","ล้าง PIN");if(n==="⌫")b.setAttribute("aria-label","ลบตัวเลขล่าสุด");
+  b.onclick=()=>n==="↺"?clear():n==="⌫"?erase():digit(n);controls.push(b);pad.append(b)
  }
  m.d.addEventListener("keydown",e=>{if(/^[0-9]$/.test(e.key)){e.preventDefault();digit(e.key)}else if(e.key==="Backspace"){e.preventDefault();erase()}});
- m.close.textContent="กลับหน้าเกม";display();
+ m.close.textContent="×";m.close.setAttribute("aria-label","ปิด");display();
 }
 async function developer(){
  if(!(await isAdmin())){pinDialog(developer);return}

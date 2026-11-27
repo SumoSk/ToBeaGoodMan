@@ -14,3 +14,5 @@ html[data-studio-lock] body{visibility:hidden}
 .gc-pin>button{border:0;background:transparent;color:#aaa;font-size:12px}
 .gc-home-title{cursor:pointer;letter-spacing:-.02em;text-wrap:balance}
 .gc-home-title:focus-visible,.brand:focus-visible{outline:1px solid #dbbd85;outline-offset:4px}
+
+.gc-pin{position:relative;padding:22px 22px 16px}.gc-pin h2[hidden]{display:none}.gc-pin-dots{margin:18px 0 25px}.gc-pin .gc-pin-secondary{font-size:21px}.gc-pin>.gc-message:empty{display:none}.gc-pin>.gc-message{font-size:12px;min-height:0;margin:10px 0 0}.gc-pin>button{position:absolute;right:5px;top:0;font-size:23px;line-height:1;margin:0;padding:4px 8px}.gc-pin>.gc-message:not(:empty){padding-bottom:3px}
