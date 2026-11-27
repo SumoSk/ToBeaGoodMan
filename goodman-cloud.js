@@ -109,7 +109,7 @@ async function developer(){
  if(!(await isAdmin())){pinDialog(developer);return}
  const m=modal("ADMIN");m.body.append(node("p","TO BE A GOOD MAN."));
  action(m.body,"ทดสอบเกม",()=>{root.location.href="story-lab.html"},m);
- action(m.body,"Life Story Studio",()=>{root.location.href="story-map.html?v=20261128-2"},m);
+ action(m.body,"Life Story Studio",()=>{root.location.href="story-map.html?v=20261128-3"},m);
  action(m.body,"ออกจากระบบผู้พัฒนา",async()=>{await logoutAdmin();m.d.close()},m);
 }
 async function guard(){
