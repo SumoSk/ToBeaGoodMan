@@ -2,7 +2,7 @@ name: Life simulation checks
 on:
   push:
     branches: [main]
-    paths: ['*.js', 'index.html', 'tests/**', '.github/workflows/life-check.yml']
+    paths: ['*.js', 'index.html', 'story-lab.html', 'tests/**', '.github/workflows/life-check.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -32,3 +32,12 @@ jobs:
           name: narrative-life-${{ matrix.life }}
           path: test-reports/
           if-no-files-found: warn
+  story-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/story-lab.cjs
