@@ -996,6 +996,18 @@ const e=events[s.at];const meta=el("div",undefined,"meta");add(meta,el("span","�
 const choices=el("div",undefined,"choices");currentChoices.forEach((c,n)=>{const b=btn("",()=>choose(e,n),"choice");add(b,el("span",c.special?"★":String.fromCharCode(65+n)+".","letter"),el("span",c.label+(c.special?" · ตัวเลือกพิเศษ":"")));choices.append(b)});add(a,el("p","คุณจะทำอย่างไร?","muted"),choices);if(e.age>=3&&e.age<100)a.append(freePanel(e.age))}
 document.getElementById("menu").onclick=()=>{if(!s){s=load();if(!s)return;if(s.pending){s.last=s.pending;const item=s.history[s.history.length-1];if(item&&item.id===s.pending.id)item.changes=s.pending.changes;s.pending=null;s.at++;advance();save()}}view=view==="journal"?"play":"journal";render()};render();
 
+if(LAB_MODE&&new URLSearchParams(location.search).get("storymap")==="1"){
+ // Read-only catalog of the actual built timeline; no gameplay, storage or state mutation.
+ window.STORY_MAP_SOURCE=()=>{
+  const clean=(v)=>JSON.parse(JSON.stringify(v));
+  const eventRows=events.map(e=>{
+   const {choices,...meta}=e;
+   return {...meta,optional:window.LIFE_QUALITY?.optionalIds?.includes(e.id)||false,
+    choices:choices.map((ch,n)=>({...ch,index:n,storedDelta:ch.delta||{},baseDelta:LIFE.delta(e,n),legacyState:stateMap[e.id]?.[n]||{}}))};
+  });
+  return clean({schema:1,events:eventRows,stats:LIFE.labels,core:LIFE.core,origins:{cities:window.CITIES,sets:originSets},stateDefaults:{...window.CONTINUITY.initial,...window.CAREER_WORLD.initial,...window.LIFE_MERGED.initial,...window.LIFE_FREEDOM.initial,...window.LIFE_LATER.initial},careers:window.CAREER_WORLD.by,optionalIds:window.LIFE_QUALITY?.optionalIds||[],globals:Object.keys(window).filter(k=>/^[A-Z_]+$/.test(k)),rules:{gate:"allowedRaw + lifeContinuityGate + paceRepeat + paceProtected + allowed",choices:"gameChoicesRaw + SOCIAL_CONTEXT + TEEN40",state:"lifeState replay + stateMap + CONTINUITY + CAREER_WORLD + LIFE_MERGED + PEOPLE + LIFE_FREEDOM + LIFE_POLISH + LIFE_LATER + SOCIAL_CONTEXT + REL40",annual:"payYear + LIFE_FREEDOM.annual + LIFE_IMPACT.annual + LIFE_LATER.annual + LIFE_HEALTH.annual + LIFE_FLEX.death",free:"LIFE_FREEDOM activities, focus, replay; LIFE_QUALITY options",endings:"lifeEnding"},dynamic:{allowed:allowedRaw.toString(),continuity:lifeContinuityGate.toString(),pacing:allowed.toString(),repeat:paceRepeat.toString(),protected:paceProtected.toString(),choices:gameChoices.toString(),choiceBase:gameChoicesRaw.toString(),state:lifeState.toString(),annual:payYear.toString(),ending:lifeEnding.toString(),freedom:window.LIFE_FREEDOM.activities.toString(),focus:window.LIFE_FREEDOM.focusOptions?.toString(),death:window.LIFE_FLEX.death.toString()}});
+ };
+}
 if(LAB_MODE){
  const originalDeath=window.LIFE_FLEX.death;
  const clone=x=>JSON.parse(JSON.stringify(x));
