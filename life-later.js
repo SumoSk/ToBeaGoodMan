@@ -1155,3 +1155,15 @@ if(e.id==="familyenv_clubfriend"&&n===3&&st.people["ใบหม่อน"])st.p
 if(e.cw==="familyenv"&&["grand","club","home","support"].includes(e.env))st.fkConduct=Math.max(0,(st.fkConduct||0)+(st.fkEnvGood?-2:1));
 };
 })(window);
+
+
+// Skip boilerplate annual follow-ups without removing their IDs from the timeline.
+// Existing saves can still replay their historical answers; genuine authored arcs remain active.
+(function(w){
+"use strict";
+const W=w.CAREER_WORLD, previous=W.allowed;
+W.allowed=(e,st,s)=>{
+ if(e.annual===true && /^year_\d+_[01]_follow$/.test(e.id)) return false;
+ return previous(e,st,s);
+};
+})(window);
