@@ -5,7 +5,203 @@
 "use strict";
 
  // Keep immediate, authored consequences together without changing save IDs or ages.
- const STORY_FLOW=(()=>{
+ 
+/* v0.30 Childhood: meaningful, replayable arcs. Legacy IDs remain for save migration. */
+(function(w){
+"use strict";
+const W=w.CAREER_WORLD,S=w.STORY,E=w.EPISODES,prev={allowed:W.allowed,choices:W.choices,story:W.story,after:W.after};
+const by=new Map([...S,...E].map(e=>[e.id,e])),D=new Map(),H=st=>st.child30||{},T=(s,k)=>s.stats[k]||0,ge=(k,v)=>s=>T(s,k)>=v,has=(st,k,...v)=>v.includes(H(st)[k]),known=(st,n)=>w.PEOPLE.privateOK(st,n),interest=(st,k)=>H(st).interests?.includes(k);
+const early=new Set("meet_mek people_mek_visit kindergarten people_intro_fah school_a school_b school_care".split(" "));
+const quiet=new Set("toy toy_a toy_b free_focus_5 year_5_0 year_6_1 year_8_0 year_9_1 drawing drawing_a kid_birthday kid_giftplay kid_reading kid_readshow kid_sports kid_sportpractice kid_sportday kid_homework kid_hwresult kid_family6 kid_family7 kid_rain kid_saving kid_saved9 familykid_mom5 familykid_rules familykid_dad6 familykid_holiday9 youthdistinct_move_0 youthdistinct_move_1 youthdistinct_kite_0 youthdistinct_kite_1 younglife_moneykid_0 kid_class8 kid_contest9 kid_contest10 authored_plant_0_9 authored_plant_1_10 authored_comic_0_10 varied_games_0 varied_sports_0".split(" "));
+const q=(label,result,delta={},set={},need)=>({label,result,delta,set,need});
+const p=(person,level="friend")=>({person,level}),j=(k,n)=>({[k]:"join",...p(n),interest:k}),end=k=>({[k]:"closed"});
+function add(id,age,order,title,story,rows,gate=()=>true,parent=null){const key="child30_"+id,e={id:key,age,order,title,story:typeof story==="string"?story:"เรื่องราววัยเด็ก",cw:"child30",custom:true,choices:rows.map((_,i)=>({label:"ทางเลือก "+(i+1),result:"",delta:{},baseIndex:i}))};if(parent){e.after="child30_"+parent;e.flowDirect=true;E.push(e)}else S.push(e);D.set(key,{story,rows,gate});}
+function roll(s,a,salt){let x=((s.seed??1)^Math.imul(a+1,2654435761)^salt)>>>0;x=Math.imul(x^(x>>>16),2246822507)>>>0;return ((x^(x>>>13))>>>0)/4294967296;}
+const score=(s,a,salt,weights,bonus=0)=>Object.entries(weights).reduce((v,[k,m])=>v+T(s,k)*m,bonus)+roll(s,a,salt)*15;
+const money=n=>n.toLocaleString("th-TH")+" บาท";
+const change=(id,obj)=>{if(by.has(id))Object.assign(by.get(id),obj);};
+change("meet_mek",{order:-20});change("people_mek_visit",{order:-19});change("kindergarten",{order:-20});
+change("study_habit",{story:"คืนก่อนส่งการบ้านครั้งแรก คุณยังทำโจทย์ไม่เสร็จ แต่รายการการ์ตูนที่ชอบกำลังจะเริ่ม คนที่บ้านบอกว่าจะช่วยถ้าคุณขอ"});
+// 5 years: multiple independent friendship routes, not mandatory loyalty to Mek/Fah.
+add("friends",5,-35,"เพื่อนคนใหม่ในวันเปิดเทอม","ครูจัดโต๊ะกิจกรรมให้นักเรียนทำความรู้จักกัน นัทชอบโจทย์ปริศนา ข้าวปั้นชวนเพื่อนเล่นเป็นกลุ่ม ส่วนมินนี่กำลังทำร้านขายของจำลอง คุณอยากไปที่โต๊ะไหน",[
+q("ต่อปริศนากับนัท","นัทชอบคิดโจทย์ยากและชวนคุณมาลองอีกวัน",{knowledge:5,problem:3,friend:3},{...p("นัท"),interest:"study"}),
+q("เข้ากลุ่มเล่นกับข้าวปั้น","ข้าวปั้นแนะนำเพื่อนในกลุ่มและชวนคุณเล่นจนหมดพัก",{social:5,confidence:3,friend:3},{...p("ข้าวปั้น"),interest:"social"}),
+q("เล่นร้านขายของกับมินนี่","มินนี่เล่าว่าที่บ้านขายของ ทั้งคู่เล่นร้านด้วยกันและเริ่มสนิท",{skill:5,problem:3,friend:3},{...p("มินนี่"),interest:"trade"}),
+q("เลือกเล่นสิ่งที่ชอบคนเดียวก่อน","ครูให้คุณมีพื้นที่ของตัวเอง ยังมีโอกาสรู้จักเพื่อนคนอื่นอีก",{h:3,creative:3},{})]);
+add("friends_day",5,-34,"เพื่อนใหม่กับกติกาของกลุ่ม",st=>"วันต่อมา "+H(st).lastPerson+" ชวนคุณเล่นอีกครั้ง แต่มีเด็กชื่อขิงอยากเข้าร่วมด้วยและยังไม่รู้กติกา",[
+q("ชวนขิงเข้ามาและสอนกติกา","ทั้งสามคนเล่นด้วยกันจนหมดพัก ขิงขอบคุณที่ได้ร่วมกลุ่ม",{friend:5,social:4},{...p("ขิง")}),
+q("เล่นรอบแรกกับเพื่อนเดิมแล้วชวนขิงรอบต่อไป","ขิงได้เล่นในรอบถัดไปและเริ่มรู้จักคุณ",{friend:3,problem:3},p("ขิง")),
+q("บอกว่าอยากเล่นกับเพื่อนเดิมเท่านั้น","ขิงไปเล่นกลุ่มอื่น คุณกับเพื่อนเดิมเล่นจนจบ",{friend:1,social:-2},{}),
+q("ขอพักเล่นคนเดียวในวันนี้","เพื่อนเข้าใจว่าคุณต้องการพักและไม่ได้เลิกคบกัน",{energy:4,h:2},{})],st=>!!H(st).lastPerson,"friends");
+add("birthday",5,45,"วันเกิดกับของที่อยากได้","ผู้ใหญ่ตกลงงบวันเกิดไว้แล้ว คุณเลือกได้ว่าจะใช้เงินกับของขวัญหรือเก็บไว้ทำสิ่งที่อยากได้ในอนาคต",[
+q("ขอหนังสือและชุดฝึกคิด","คุณเริ่มฝึกอ่านและแก้โจทย์ตามวัย",{knowledge:6,problem:3},{interest:"study"}),
+q("ขออุปกรณ์กีฬาที่เหมาะกับวัย","ผู้ใหญ่พาคุณฝึกเล่นและคุณเริ่มพบกิจกรรมที่ชอบ",{physical:5,skill:4},{interest:"sport"}),
+q("ขอชุดศิลปะหรืออุปกรณ์ประดิษฐ์","คุณเริ่มสร้างผลงานที่เป็นของตัวเอง",{creative:7,skill:3},{interest:"art"}),
+q("ฉลองที่บ้านและขอเงินใส่กระปุก","คุณได้ใช้เวลากับครอบครัวและเก็บเงินของขวัญ 150 บาท",{m:150,h:3,discipline:3},{interest:"trade"})]);
+// 6 years: earning and moral consequences in the same episode.
+add("market",6,10,"ร้านเล็กในงานชุมชน",(st,s)=>"งานชุมชนเปิดให้เด็กช่วยผู้ปกครองขายของตามวัย "+(s.origin?.family==="modest"?"ที่บ้านมีงบจำกัดจึงใช้วัตถุดิบที่หาได้ง่าย":"ที่บ้านมีวัตถุดิบให้ลองทำของขาย")+" มินนี่ชวนคุณลองช่วยร้าน โดยผู้ใหญ่ตกลงให้ส่วนแบ่งเป็นค่าขนม",[
+q("ช่วยขายขนมกับมินนี่","คุณช่วยขายจนปิดร้าน ได้ส่วนแบ่ง 120 บาท",{m:120,skill:5,friend:3},{...p("มินนี่"),trade:"sold",interest:"trade"}),
+q("ทำการ์ดและของประดิษฐ์ไปขาย","คุณขายของทำมือได้กำไรส่วนแบ่ง 180 บาทหลังหักต้นทุน",{m:180,creative:5,skill:4},{trade:"sold",interest:"art"}),
+q("ช่วยคนที่บ้านโดยไม่ขอเงิน","ผู้ใหญ่ขอบคุณ คุณเรียนรู้ว่าการหาเงินต้องใช้เวลา",{r:4,responsibility:4,experience:4},{trade:"help"}),
+q("ไม่ขายและไปทำกิจกรรมอื่น","คุณใช้วันหยุดตามที่ชอบ ไม่ได้รับรายได้จากร้าน",{h:4,energy:2},{trade:"closed"}),
+q("★ วางแผนชุดสินค้าและทำป้ายราคา","ผู้ใหญ่ช่วยตรวจราคา คุณขายได้ดีและรับส่วนแบ่งกำไร 300 บาท",{m:300,skill:6,problem:4},{...p("มินนี่"),trade:"sold",interest:"trade"},s=>T(s,"problem")>=60||T(s,"skill")>=12)]);
+add("market_cash",6,11,"เงินที่ลูกค้าจ่ายเกิน","ก่อนเก็บร้าน ลูกค้าซื้อของราคา 100 บาท แต่ยื่นธนบัตรรวม 200 บาทแล้วเดินไป คุณเป็นคนเดียวที่เห็นว่าเขาจ่ายเกิน",[
+q("เรียกลูกค้ากลับมาคืนเงิน","ลูกค้าได้รับเงินคืน 100 บาท ร้านปิดด้วยยอดถูกต้อง",{i:5,reliable:4,respect:3},{marketTrust:"honest"}),
+q("บอกผู้ใหญ่ช่วยตรวจยอดก่อนคืน","ผู้ใหญ่ตรวจเงินและคืนครบ คุณได้เรียนรู้การตรวจบัญชี",{problem:4,i:3,skill:3},{marketTrust:"honest"}),
+q("เก็บเงินส่วนเกิน 100 บาทไว้เอง","คุณได้เงินเพิ่มโดยไม่บอกผู้ใหญ่หรือลูกค้า",{m:100,i:-6,reliable:-3},{marketTrust:"hidden"}),
+q("บอกผู้ใหญ่ว่าลูกค้าให้ทิปทั้งที่ไม่ได้พูด","ผู้ใหญ่เชื่อและให้เงินคุณ 100 บาท ลูกค้าอาจกลับมาตรวจสอบ",{m:100,i:-7,fair:-4},{marketTrust:"hidden"})],st=>has(st,"trade","sold"),"market");
+add("market_truth",6,12,"ลูกค้ากลับมาทวงเงิน","ลูกค้ากลับมาหลังเก็บร้าน เขานับเงินแล้วพบว่าจ่ายเกิน ผู้ใหญ่ถามคุณว่าเกิดอะไรขึ้น",[
+q("ยอมรับและคืน 100 บาท","ลูกค้าได้เงินครบ คุณขอโทษและเริ่มสร้างความไว้ใจใหม่",{m:-100,i:4,responsibility:4},{marketTrust:"repaired"},ge("m",100)),
+q("ขอผู้ใหญ่ช่วยคืนเงินแล้วหักจากค่าขนม","ผู้ใหญ่ชดใช้เงินและจัดการส่วนที่ยังค้างกับคุณ",{r:-2,responsibility:3},{marketTrust:"repaired"}),
+q("ปฏิเสธทั้งที่รู้ความจริง","ผู้ใหญ่พบเงินส่วนเกินและคืนลูกค้า ความไว้ใจลดลง",{i:-5,reliable:-5},{marketTrust:"caught"}),
+q("ยอมคืนเงินแต่ไม่อยากอธิบาย","ลูกค้าได้รับเงินคืน เรื่องการชำระเงินจบ แต่ความไว้ใจยังต้องฟื้น",{stress:3,responsibility:1},{marketTrust:"caught"})],st=>has(st,"marketTrust","hidden"),"market_cash");
+add("homework",6,30,"เช้าวันส่งการบ้าน",(st,s)=>s.answers.study_habit===3?"ครูพบว่าสมุดของคุณยังว่าง เพื่อนเสนอให้ลอกก่อนส่ง":"ครูตรวจงานแล้วพบว่าคุณยังทำบางข้อผิด เพื่อนเสนอให้ลอกคำตอบก่อนส่ง",[
+q("บอกครูตามจริงและขอเวลาทำเอง","ครูอธิบายโจทย์ คุณทำงานเสร็จในพักกลางวัน",{knowledge:6,responsibility:4,i:3},{studyRepair:"done",interest:"study"}),
+q("ขอเพื่อนสอนวิธีคิดโดยไม่ลอก","คุณเข้าใจโจทย์และแก้เองจนส่งทัน",{knowledge:5,problem:4,friend:2},{studyRepair:"done"}),
+q("ลอกคำตอบเพื่อส่งทัน","ครูตรวจสมุดผ่าน แต่เมื่อให้ลองโจทย์คล้ายกัน คุณยังทำเองไม่ได้",{i:-5,discipline:-3},{studyRepair:"copy"}),
+q("ส่งงานตามที่ทำได้","ครูบันทึกงานตามจริงและแนะนำให้ฝึกเพิ่ม",{experience:3,confidence:2},{studyRepair:"done"})],(st,s)=>[2,3].includes(s.answers.study_habit));
+// 7 years: sport, results based on ability and preparation.
+add("sport",7,5,"เจกับทีมกีฬาสี","เจชวนคุณลองวิ่งผลัดในงานกีฬาสี ครูเปิดให้ทดลองก่อนเลือกทีม โรงเรียนมีเงินรางวัลสำหรับทีมที่ชนะ",[
+q("ลองฝึกกับเจและขอครูแนะนำ","คุณฝึกส่งไม้และวิ่งกับทีมจนจบรอบทดลอง",{physical:4,skill:6,friend:3},j("sport","เจ")),
+q("ช่วยจับเวลาและเชียร์ทีม","คุณรู้จักเจและช่วยทีมโดยไม่ต้องลงแข่งขัน",{social:4,friend:3},{...p("เจ"),sport:"closed"}),
+q("เลือกกิจกรรมอื่นที่ชอบ","คุณยังมีโอกาสเล่นกีฬาหรือรู้จักเพื่อนผ่านกิจกรรมอื่น",{h:3},end("sport")),
+q("★ ขอคัดตัวเข้าทีมหลัก","ครูเห็นความพร้อมทางร่างกายและให้คุณฝึกกับทีมหลัก",{physical:3,skill:5,confidence:3},j("sport","เจ"),s=>T(s,"physical")>=88&&T(s,"skill")>=8)]);
+add("sport_match",7,6,"วันแข่งวิ่งผลัด","หลายสัปดาห์ต่อมา ทีมที่ซ้อมด้วยกันถึงวันแข่ง เจถามว่าจะแบ่งตำแหน่งวิ่งอย่างไร",[
+q("วิ่งตามจังหวะที่ฝึก","ทีมวิ่งครบและใช้ทักษะที่ฝึกมา",{physical:3,experience:4},{sportFinish:"normal"}),
+q("ให้เจวิ่งตำแหน่งที่ถนัดกว่า","ทีมปรับตำแหน่งตามจุดแข็งของแต่ละคน",{friend:4,skill:3,fair:3},{sportFinish:"team"}),
+q("เร่งเกินกำลังเพื่อเอาชนะ","คุณวิ่งจนจบแต่เหนื่อยมากและต้องพักหลังแข่ง",{energy:-7,physical:-2,ambition:3},{sportFinish:"risk"}),
+q("★ ช่วยทีมวางแผนส่งไม้และจังหวะวิ่ง","ทีมใช้ทักษะที่ฝึกมาประสานกันได้ดี",{skill:4,problem:4,friend:3},{sportFinish:"expert"},s=>T(s,"skill")>=15&&T(s,"physical")>=85)],st=>has(st,"sport","join"),"sport");
+const sportPrize=(st,s)=>{const n=score(s,7,41,{physical:.5,skill:.6,discipline:.2},has(st,"sportFinish","team","expert")?10:0);return n>=78?500:n>=65?200:0;};
+add("sport_result",7,7,"ประกาศผลกีฬาสี",(st,s)=>{const n=sportPrize(st,s);return n===500?"ทีมชนะเลิศ ได้ส่วนแบ่งเงินรางวัลคนละ 500 บาท":n===200?"ทีมได้รองชนะเลิศ ได้ส่วนแบ่งคนละ 200 บาท":"ทีมไม่ติดอันดับ แต่ทุกคนวิ่งจบและครูให้คำแนะนำ";},[
+q("รับผลการแข่งขันและขอบคุณทีม","คุณทบทวนสิ่งที่ทำได้ดีและสิ่งที่ต้องฝึก",{experience:4,friend:3},{sport:"finished"}),
+q("ขอครูช่วยวางแผนฝึกต่อ","ครูแนะนำวิธีฝึกที่เหมาะกับวัยและเป้าหมาย",{skill:5,discipline:3},{sport:"finished",interest:"sport"}),
+q("พักจากการแข่งขันและทำกิจกรรมอื่น","คุณรักษาสุขภาพและเลือกจังหวะชีวิตของตัวเอง",{energy:5,h:3},{sport:"finished",sportStop:true})],st=>!!H(st).sportFinish,"sport_match");
+// 8 years: gaming and a separate social circle with real trade-offs.
+add("games",8,5,"บอลกับทีมเกมหลังเลิกเรียน","บอลชวนคุณตั้งทีมเล่นเกมที่เหมาะกับวัยในเวลาที่ผู้ปกครองอนุญาต มีการแข่งขันเล็กๆ ในงานโรงเรียนเดือนหน้า",[
+q("เล่นกับบอลหลังทำการบ้านเสร็จ","บอลชวนฝึกและแบ่งหน้าที่ คุณมีเพื่อนใหม่จากเกม",{problem:5,friend:4,discipline:3},j("games","บอล")),
+q("ฝึกทุกครั้งแม้ต้องลดเวลานอน","คุณสนิทกับบอลและฝึกได้มาก แต่เริ่มเหนื่อยในห้องเรียน",{skill:5,friend:3,energy:-6,discipline:-4},{...j("games","บอล"),gameRisk:true}),
+q("ชวนบอลทำกิจกรรมอื่นแทน","บอลยอมลองกิจกรรมอื่น คุณทั้งสองเป็นเพื่อนได้โดยไม่ต้องเล่นเกม",{friend:3,social:3},{...p("บอล"),games:"closed"}),
+q("ไม่เล่นเกมและไปทำสิ่งที่ชอบ","คุณไม่เข้าทีม แต่ยังพบเพื่อนกลุ่มอื่นได้",{h:3},end("games"))]);
+add("games_match",8,6,"การแข่งขันเกมของโรงเรียน","หลังฝึกหลายครั้ง ทีมเข้าร่วมการแข่งขันจริง ผู้จัดให้รางวัลค่าขนมแก่ทีมที่ทำผลงานดี",[
+q("สื่อสารและแบ่งหน้าที่กับทีม","ทีมเล่นจบทุกนัดและช่วยกันแก้ปัญหา",{problem:5,skill:4,friend:3},{gameFinish:"team"}),
+q("เล่นตามที่ตัวเองถนัด","คุณทำหน้าที่ของตัวเองและได้ประสบการณ์",{skill:5,experience:3},{gameFinish:"solo"}),
+q("ตำหนิเพื่อนเมื่อทีมเริ่มตามหลัง","ทีมเสียสมาธิและความสัมพันธ์แย่ลง",{friend:-5,stress:3,skill:2},{gameFinish:"blame"}),
+q("★ อ่านแผนคู่แข่งและช่วยทีมปรับกลยุทธ์","ทีมปรับแผนและประสานกันได้ดีขึ้น",{problem:5,skill:4,friend:4},{gameFinish:"expert"},ge("problem",65))],st=>has(st,"games","join"),"games");
+const gamePrize=(st,s)=>{const n=score(s,8,57,{problem:.55,skill:.7},has(st,"gameFinish","team","expert")?12:0);return n>=70?800:n>=58?300:0;};
+add("games_result",8,7,"ผลการแข่งขันและเวลาเล่น",(st,s)=>{const n=gamePrize(st,s);return (n===800?"ทีมชนะ ได้ส่วนแบ่งเงินรางวัล 800 บาท":n===300?"ทีมได้รางวัลชมเชย ส่วนแบ่ง 300 บาท":"ทีมไม่ได้รางวัลแต่เล่นครบทุกนัด")+(H(st).gameRisk?" ครูแจ้งด้วยว่าคุณง่วงระหว่างเรียนหลายครั้ง":"")+" คุณอยากจัดเวลาต่อไปอย่างไร";},[
+q("กำหนดเวลาเล่นหลังทำหน้าที่","คุณกับบอลตกลงเวลาเล่นให้ไม่กระทบการเรียน",{discipline:5,selfcontrol:4},{games:"finished",gameRisk:false}),
+q("ฝึกต่อจริงจังโดยตกลงตารางกับผู้ใหญ่","ผู้ใหญ่ช่วยจัดเวลาซ้อมและพัก คุณยังมีเป้าหมายด้านเกม",{skill:5,problem:3},{games:"finished",interest:"games",gameRisk:false}),
+q("เล่นให้นานขึ้นทุกวัน","ทักษะดีขึ้นแต่เวลาพักและการเรียนเริ่มมีปัญหา",{skill:4,energy:-7,discipline:-5},{games:"finished",gameRisk:true}),
+q("พักจากเกมแข่งขันและลองกิจกรรมอื่น","คุณยังติดต่อบอลได้โดยไม่ต้องแข่งด้วยกันทุกครั้ง",{h:4,energy:4},{games:"finished",gameStop:true,gameRisk:false})],st=>!!H(st).gameFinish,"games_match");
+add("circle",8,14,"โต๊ะอาหารที่เลือกได้","ช่วงพักเที่ยง ข้าวปั้นชวนเข้ากลุ่ม ขิงนั่งอ่านหนังสือคนเดียว ส่วนพีทมีของเล่นใหม่ราคาแพงและชวนคุณไปดู",[
+q("นั่งกับขิงและถามเรื่องที่เขาชอบ","ขิงเล่าเรื่องอวกาศที่เขาสนใจ คุณเริ่มสนิทกัน",{knowledge:4,friend:4,social:2},p("ขิง")),
+q("เข้ากลุ่มข้าวปั้นและชวนคนอื่นคุย","คุณรู้จักเด็กหลายคนผ่านกิจกรรมของกลุ่ม",{social:5,friend:4},p("ข้าวปั้น")),
+q("ไปนั่งกับพีทและดูของเล่น","พีทเล่าว่าชอบสะสมของและชวนคุณเล่นด้วย",{friend:3,experience:3},p("พีท")),
+q("เลือกพักคนเดียว","คุณได้พักในเวลาที่ต้องการ โดยไม่ปิดโอกาสพบเพื่อนใหม่",{energy:4,h:3},{})]);
+add("circle_test",8,15,"ของเล่นที่มีเงื่อนไข","พีทเดินมาชวนคุณเล่นของเล่นราคาแพง แต่ขอให้ไม่ชวนขิงมาด้วย เพราะขิงไม่มีของเล่นแบบเดียวกัน",[
+q("ปฏิเสธเงื่อนไขและชวนขิงมาเล่นอย่างอื่น","คุณไม่ได้ใช้ของเล่นพีท แต่ขิงมีเพื่อนและไม่ถูกทอดทิ้ง",{fair:5,friend:4,i:3},p("ขิง")),
+q("บอกพีทว่าคุยกันได้โดยไม่กีดกันคนอื่น","พีทไม่ให้ยืมของเล่น แต่หยุดขอให้คุณกีดกันขิง",{problem:4,social:3,fair:3},p("พีท")),
+q("รับข้อเสนอและไม่ชวนขิง","คุณได้เล่นของที่อยากได้ ขิงเสียใจและเว้นระยะจากกลุ่ม",{h:4,fair:-6,friend:-3},{...p("พีท"),exclude:"ขิง"}),
+q("ออกจากกลุ่มและไม่ตัดสินใจแทนใคร","คุณไม่ได้ใช้ของเล่นและไม่ได้ช่วยขิงแก้ปัญหา",{energy:2,confidence:-1},{}),
+q("★ เจรจาให้ทุกคนผลัดกันเล่นตามกติกา","พีทยอมให้เล่นเป็นรอบ ขิงได้เข้าร่วมโดยไม่ต้องมีของราคาแพง",{social:5,problem:4,friend:5,fair:3},p("ขิง"),s=>T(s,"social")>=65&&T(s,"problem")>=60)],st=>known(st,"พีท")||known(st,"ขิง")||known(st,"ข้าวปั้น"),"circle");
+// 9 years: science and art, with awards and genuinely difficult choices.
+add("science",9,10,"ครูเปิดรับตัวแทนประกวดสิ่งประดิษฐ์","ครูประกาศงานประกวดสิ่งประดิษฐ์ เงินรางวัลทีมชนะ 2,000 บาท นัทชวนทำเครื่องเตือนน้ำล้นด้วยกัน มีเวลาเตรียมหนึ่งเดือน",[
+q("สมัครทำผลงานคู่กับนัท","ทั้งคู่แบ่งงานและนัดทดลองต้นแบบ",{knowledge:6,problem:5,friend:3},j("science","นัท")),
+q("ขอฝึกกับครูก่อนและยังไม่สมัคร","ครูให้โจทย์ฝึกสำหรับโอกาสต่อไป",{knowledge:5,discipline:3},{science:"closed",interest:"study"}),
+q("เลือกกิจกรรมที่สนใจมากกว่า","คุณไม่จำเป็นต้องแข่งทุกครั้งเพื่อเงินรางวัล",{h:3},end("science")),
+q("★ เสนอต้นแบบและสมัครคัดตัวทันที","ครูเห็นพื้นฐานของคุณและให้นัทช่วยทดสอบต้นแบบ",{knowledge:5,creative:5,problem:4},j("science","นัท"),s=>T(s,"knowledge")>=25&&T(s,"problem")>=60)],(st,s)=>interest(st,"study")||interest(st,"art")||T(s,"knowledge")>=15||T(s,"creative")>=15||roll(s,9,61)<.4);
+add("science_build",9,11,"ต้นแบบที่ยังใช้ไม่ได้","หลังทดลองหลายครั้ง เครื่องเตือนน้ำล้นยังทำงานผิดจังหวะ นัทเสนอให้ส่งตามสภาพ ครูให้แก้ได้ถึงวันพรุ่งนี้",[
+q("แก้ต้นแบบด้วยกันและบันทึกผลจริง","คุณกับนัทแก้ข้อผิดพลาดและมีข้อมูลจริงนำเสนอ",{problem:6,knowledge:5,friend:3},{scienceBuild:"team"}),
+q("นำเสนอข้อจำกัดตามจริง","ทีมส่งงานทันและอธิบายสิ่งที่ยังแก้ไม่ได้",{i:4,knowledge:4},{scienceBuild:"honest"}),
+q("ให้ผู้ใหญ่ทำส่วนสำคัญแล้วอ้างว่าเป็นงานทีม","ผลงานดูดี แต่ทั้งคู่ยังอธิบายวิธีทำไม่ได้ทั้งหมด",{i:-6,creative:1},{scienceBuild:"fake"}),
+q("★ วิเคราะห์สาเหตุและแก้ตามความรู้ที่มี","ต้นแบบทำงานได้และทีมบันทึกผลยืนยัน",{problem:5,knowledge:5,creative:4},{scienceBuild:"expert"},s=>T(s,"problem")>=65&&T(s,"knowledge")>=25)],st=>has(st,"science","join"),"science");
+const scienceWin=(st,s)=>!has(st,"scienceBuild","fake")&&score(s,9,91,{knowledge:.9,problem:.4,creative:.4},has(st,"scienceBuild","team","expert")?15:0)>=70;
+add("science_result",9,12,"ประกาศผลการประกวด",(st,s)=>scienceWin(st,s)?"ทีมชนะ ได้รางวัล 2,000 บาท ครูฝากเงินรางวัลทีมไว้กับคุณ เพราะนัทไม่มาโรงเรียนวันนี้":has(st,"scienceBuild","fake")?"กรรมการถามรายละเอียดที่ทีมตอบไม่ได้ จึงไม่ได้รางวัล":"ทีมไม่ได้รางวัลชนะเลิศ ครูชมส่วนที่ทำได้และแนะนำสิ่งที่ควรฝึก",[
+q("รับฟังผลและทบทวนงาน","คุณรับผลตามจริงและได้ประสบการณ์จากการทำงานร่วมกัน",{experience:4,friend:4},{science:"finished"}),
+q("ขอคำแนะนำเพื่อลองใหม่","ครูแนะนำวิธีฝึกต่อ คุณยังมีโอกาสในอนาคต",{knowledge:5,discipline:3},{science:"finished",interest:"study"}),
+q("จบการแข่งขันและเลือกความสนใจอื่น","คุณไม่ได้ถูกบังคับให้แข่งขันต่อทุกปี",{h:3,energy:3},{science:"finished"})],st=>!!H(st).scienceBuild,"science_build");
+add("science_money",9,13,"เงินรางวัลที่ไม่มีใครรู้","คุณถือเงินรางวัลทีม 2,000 บาท นัทช่วยทำเกือบครึ่งหนึ่ง แต่ยังไม่รู้ว่าครูฝากเงินไว้กับคุณ",[
+q("บอกครูและแบ่งเงินให้นัทคนละ 1,000 บาท","นัทได้ส่วนแบ่ง คุณเก็บเงิน 1,000 บาท และชื่อทั้งสองได้รับการยืนยัน",{m:1000,i:5,fair:5,friend:4},{scienceMoney:"fair"}),
+q("นำเงินไปแบ่งให้นัทเอง","ทั้งคู่ได้เงินคนละ 1,000 บาท นัทขอบคุณที่รักษาคำพูด",{m:1000,friend:5,i:3},{scienceMoney:"fair"}),
+q("เก็บเงินทั้งหมดโดยไม่บอกนัท","คุณเก็บเงิน 2,000 บาท ส่วนของนัทยังไม่ได้จ่ายและอาจถูกทวง",{m:2000,i:-7,fair:-6},{scienceMoney:"hidden"}),
+q("ให้นัททั้งหมดเป็นของขวัญ","นัทรับเงินเมื่อคุณอธิบายว่าให้โดยสมัครใจ คุณไม่เก็บเงินรางวัลไว้",{sacrifice:5,friend:5},{scienceMoney:"given"}),
+q("★ ตกลงแบ่งรางวัลและวางแผนใช้ส่วนของตัวเองต่อยอด","ทั้งคู่ได้เงินคนละ 1,000 บาทและวางแผนผลงานครั้งใหม่โดยสมัครใจ",{m:1000,problem:5,social:3,friend:4},{scienceMoney:"fair"},s=>T(s,"social")>=65&&T(s,"problem")>=65)],st=>H(st).scienceWin===true,"science_result");
+add("science_truth",10,4,"นัทถามเรื่องรางวัล","นัทเห็นประกาศรางวัลจากปีก่อนและรู้ว่าทีมได้เงิน 2,000 บาท เขาถามว่าทำไมไม่เคยได้รับส่วนแบ่ง",[
+q("ยอมรับและคืนส่วนแบ่ง 1,000 บาท","นัทได้เงินตามสิทธิ ความไว้ใจยังต้องใช้เวลา",{m:-1000,i:4,responsibility:5,friend:1},{scienceMoney:"repaired"},ge("m",1000)),
+q("ยอมรับและขอผู้ใหญ่ช่วยคืนเงิน","ผู้ใหญ่ช่วยจัดการเงินส่วนที่ต้องคืน คุณยังต้องรับผิดชอบต่อความไว้ใจ",{i:4,responsibility:3,r:-2},{scienceMoney:"repaired"}),
+q("ปฏิเสธว่าทีมไม่ได้รางวัล","นัทมีหลักฐานและขอเว้นระยะ ผู้ใหญ่ประสานคืนส่วนแบ่ง",{i:-6,reliable:-6,friend:-5},{scienceMoney:"caught",...p("นัท","distant")}),
+q("ขอโทษและคืนเท่าที่มี ให้ผู้ใหญ่ช่วยส่วนที่ขาด","นัทได้รับส่วนแบ่งครบผ่านเงินของคุณและความช่วยเหลือจากผู้ใหญ่",{i:3,responsibility:4,r:-2},{scienceMoney:"repaired"})],st=>has(st,"scienceMoney","hidden"));
+add("art",9,20,"ประกวดศิลปะและของทำมือ","ใบหม่อนชวนส่งผลงานในงานโรงเรียน มีรางวัล 1,500 บาท และพื้นที่ขายงานที่ผู้ใหญ่ดูแล",[
+q("สมัครประกวดภาพวาดกับใบหม่อน","คุณเริ่มเตรียมผลงานของตัวเองและมีเพื่อนร่วมฝึก",{creative:7,friend:3},j("art","ใบหม่อน")),
+q("ทำของชิ้นเล็กไปขายแทน","คุณขายงานจบ ได้กำไรส่วนแบ่ง 350 บาทหลังหักต้นทุน",{m:350,creative:4,skill:5},{...p("ใบหม่อน"),art:"closed",interest:"trade"}),
+q("ไปชมงานและให้กำลังใจเพื่อน","คุณรู้จักผลงานหลายแบบโดยไม่ต้องแข่งขัน",{friend:3,experience:3},{...p("ใบหม่อน"),art:"closed"}),
+q("ไม่เข้าร่วมและเลือกกิจกรรมอื่น","คุณรักษาเวลาของตัวเอง",{h:3},end("art")),
+q("★ ส่งผลงานต้นฉบับที่สะสมไว้","ครูช่วยส่งผลงานเข้าประกวด คุณใช้ทักษะที่ฝึกมา",{creative:5,confidence:3},j("art","ใบหม่อน"),ge("creative",24))],(st,s)=>interest(st,"art")||T(s,"creative")>=12||roll(s,9,73)<.35);
+const artPrize=(st,s)=>score(s,9,82,{creative:1,skill:.5})>=42?1500:0;
+add("art_result",9,21,"ผลการประกวดศิลปะ",(st,s)=>artPrize(st,s)?"ผลงานได้รับเงินรางวัล 1,500 บาท กรรมการชมความคิดสร้างสรรค์":"ผลงานไม่ได้รับรางวัล แต่กรรมการบอกจุดเด่นและสิ่งที่ควรฝึก",[
+q("รับผลและขอบคุณใบหม่อน","คุณกับใบหม่อนแลกเปลี่ยนคำแนะนำและจบงานด้วยกัน",{friend:4,experience:3},{art:"finished"}),
+q("ขอกรรมการแนะนำการฝึกต่อ","คุณได้โจทย์พัฒนาที่เหมาะกับตัวเอง",{creative:5,skill:3},{art:"finished",interest:"art"}),
+q("ทำงานศิลปะเพื่อความสุขต่อ","คุณไม่ต้องชนะเพื่อให้การสร้างงานมีความหมาย",{h:5,energy:3},{art:"finished"})],st=>has(st,"art","join"),"art");
+// 10 years: responsibility, scholarships, next-stage interests.
+add("leader",10,10,"หัวหน้ากิจกรรมและเงินส่วนรวม","ครูเปิดให้สมัครผู้ประสานงานกิจกรรมห้อง มีงบ 1,000 บาท ข้าวปั้นชวนคุณช่วยคิด ส่วนพีทอยากจัดตามความชอบของตัวเอง",[
+q("สมัครและเสนอให้ทุกคนร่วมออกแบบ","ครูให้คุณทดลองรับผิดชอบกิจกรรมหนึ่งครั้ง",{social:5,responsibility:4},{...p("ข้าวปั้น"),leader:"join",interest:"social"}),
+q("ช่วยเบื้องหลังโดยไม่สมัคร","คุณช่วยทำแผนและรู้จักเพื่อนหลายกลุ่ม",{skill:4,friend:3},{...p("ข้าวปั้น"),leader:"closed"}),
+q("เลือกทำสิ่งที่ชอบแทน","คุณไม่ต้องเป็นผู้นำเพื่อมีเพื่อนหรือมีความหมาย",{h:3},end("leader")),
+q("★ เสนอแผนจัดงบและรับหน้าที่ประสานงาน","ครูเห็นความพร้อมและมอบหน้าที่ให้คุณ",{social:5,problem:4,confidence:3},{leader:"join",interest:"social"},s=>T(s,"social")>=65&&T(s,"reliable")>=55)]);
+add("leader_cash",10,11,"เงินกิจกรรมที่เหลือ","กิจกรรมจบแล้ว งบเหลือ 300 บาท พีทชวนแบ่งกันคนละ 150 บาท เพราะครูยังไม่ได้ตรวจบัญชี",[
+q("คืนเงินพร้อมบัญชีให้ครู","ครูตรวจยอดและคืนเงินเข้ากองกิจกรรม คุณได้รับความไว้ใจ",{i:5,reliable:5,responsibility:4},{leader:"finished"}),
+q("ขออนุมัติซื้อของใช้ให้ทั้งห้อง","ครูอนุมัติและบันทึกยอด ทุกคนได้ใช้ประโยชน์",{fair:4,friend:4,problem:3},{leader:"finished"}),
+q("แบ่งเงินกับพีทคนละ 150 บาท","คุณได้เงินโดยไม่ได้รับอนุญาต เรื่องงบยังตรวจสอบได้",{m:150,i:-6,fair:-5},{leader:"hidden",...p("พีท")}),
+q("ปฏิเสธและมอบเงินให้ครูจัดการ","ครูรับเงินคืนครบ คุณไม่ร่วมแบ่งเงินส่วนรวม",{i:3,selfcontrol:3},{leader:"finished"})],st=>has(st,"leader","join"),"leader");
+add("leader_check",10,12,"ครูตรวจบัญชี","ครูพบยอดขาด 300 บาทและเรียกคุณกับพีทมาคุยหลังเลิกเรียน",[
+q("คืนส่วนของตัวเองและบอกความจริง","ครูรับ 150 บาทคืนและจัดการส่วนของพีทแยกกัน",{m:-150,i:4,responsibility:4},{leader:"repaired"},ge("m",150)),
+q("ขอผู้ใหญ่ช่วยชดใช้ส่วนของตัวเอง","ผู้ใหญ่ช่วยคืนส่วนของคุณครบและคุยเรื่องความรับผิดชอบ",{i:3,r:-2,responsibility:3},{leader:"repaired"}),
+q("โยนความผิดให้พีททั้งหมด","ครูตรวจพบหลักฐานและประสานผู้ใหญ่ชดใช้ ความไว้ใจลดลง",{i:-6,reliable:-6,friend:-4},{leader:"caught",...p("พีท","distant")}),
+q("ยอมรับผิดและให้ผู้ใหญ่ช่วยจัดการคืนเงิน","เงินส่วนรวมได้รับคืน แต่คุณยังต้องสร้างความไว้ใจใหม่",{responsibility:3,stress:3,r:-2},{leader:"repaired"})],st=>has(st,"leader","hidden"),"leader_cash");
+add("scholar",10,20,"โอกาสทุนส่งเสริมความสามารถ",(st,s)=>"ครูประกาศทุน 3,000 บาทสำหรับเด็กที่ผ่านการคัดเลือก "+(s.origin?.family==="modest"?"ครูบอกว่ามีช่องทางช่วยค่าอุปกรณ์และการเดินทางสำหรับเด็กที่มีข้อจำกัด":"ครูอธิบายว่าต้องส่งผลงานและเข้าคัดเลือกด้วยตัวเอง"),[
+q("สมัครและฝึกตามแผน","คุณส่งผลงานตามจริงและเข้าคัดเลือก",{knowledge:5,discipline:4},{scholar:"join",interest:"study"}),
+q("ขอครูแนะนำโอกาสอื่นตามความถนัด","ครูให้ข้อมูลทุนและกิจกรรมที่เหมาะกับคุณ",{problem:4,experience:4},{scholar:"closed"}),
+q("ไม่สมัครและรักษากิจกรรมเดิม","คุณไม่จำเป็นต้องแข่งขันทุกโอกาส",{h:3},end("scholar")),
+q("★ ส่งแฟ้มผลงานและขอคัดเลือกตัวแทน","ครูรับรองผลงานที่คุณสะสมและให้เข้าคัดเลือก",{confidence:4,knowledge:5,experience:3},{scholar:"join",interest:"study"},s=>T(s,"knowledge")>=32||T(s,"creative")>=30||T(s,"skill")>=35)],(st,s)=>T(s,"knowledge")>=18||T(s,"creative")>=18||T(s,"skill")>=22||s.origin?.family==="modest");
+const scholarship=(st,s)=>Math.max(T(s,"knowledge"),T(s,"creative"),T(s,"skill"))+T(s,"discipline")*.35+roll(s,10,102)*18>=53?3000:0;
+add("scholar_result",10,21,"ประกาศผลทุน",(st,s)=>scholarship(st,s)?"คุณผ่านการคัดเลือก ได้รับทุนสนับสนุนการเรียนรู้ 3,000 บาท":"คุณยังไม่ผ่าน ครูแจ้งเกณฑ์และแนะนำสิ่งที่ต้องพัฒนา",[
+q("รับผลและวางแผนพัฒนาต่อ","คุณใช้คำแนะนำเป็นแผนสำหรับวัยมัธยม",{experience:4,discipline:4},{scholar:"finished"}),
+q("คุยกับคนที่บ้านเรื่องเป้าหมาย","ครอบครัวรับฟังและตกลงช่วยตามความพร้อม",{r:4,security:3},{scholar:"finished"}),
+q("พักก่อนและเลือกเส้นทางที่สนใจ","คุณยังมีอิสระเลือกสิ่งที่อยากทำ",{h:4,energy:3},{scholar:"finished"})],st=>has(st,"scholar","join"),"scholar");
+add("next",10,95,"ก่อนก้าวสู่วัยมัธยม","เมื่อมองย้อนสิ่งที่ผ่านมาคุณเริ่มเห็นว่าตัวเองชอบอะไร ตอนนี้อยากให้เวลากับอะไรเพิ่มขึ้น โดยไม่จำเป็นต้องเลิกสิ่งที่เคยสนใจ",[
+q("การเรียนและฝึกคิด","คุณเตรียมพื้นฐานสำหรับช่วงมัธยม",{knowledge:5,discipline:3},{interest:"study"}),
+q("กีฬาและสุขภาพ","คุณเตรียมดูแลร่างกายและฝึกสิ่งที่ชอบ",{physical:4,skill:4},{interest:"sport"}),
+q("เกม ศิลปะ และความคิดสร้างสรรค์","คุณให้พื้นที่กับงานอดิเรกและความคิดใหม่",{creative:5,problem:3},{interest:"art"}),
+q("เพื่อน กิจกรรม และการหาเงิน","คุณตั้งใจเรียนรู้จากคนและโอกาสใหม่",{social:4,skill:4},{interest:"social"})]);
+// Later-life branch compatibility: existing gates and historical choices remain valid.
+const guestNames=st=>Object.keys(st.people||{}).filter(n=>["เมฆ","ฟ้า","นัท","ข้าวปั้น","ดิน","มินนี่","เจ","บอล","ขิง","พีท","ใบหม่อน","โจ๊ก"].includes(n)&&known(st,n));
+const guest=by.get("familykid_friendhome");if(guest)while(guest.choices.length<13)guest.choices.push({label:"ชวนเพื่อน",result:"",delta:{},set:{}});
+const prizes={child30_sport_result:sportPrize,child30_games_result:gamePrize,child30_art_result:artPrize,child30_scholar_result:scholarship};
+W.allowed=(e,st,s)=>{if(e.cw==="child30")return D.get(e.id).gate(st,s);if(e.age<=10&&quiet.has(e.id))return false;if(e.age<=4&&early.has(e.id))return e.id!=="people_mek_visit"||Object.hasOwn(s.answers,"meet_mek")&&s.answers.meet_mek!==2;if(e.id==="familykid_friendhome")return guestNames(st).length>0;if(e.id==="kid_fah5"&&!known(st,"ฟ้า"))return false;return prev.allowed(e,st,s);};
+W.story=(e,st)=>e.cw==="child30"?e.story:prev.story(e,st);
+W.choices=(e,st,s)=>{
+ if(e.id==="familykid_friendhome")return [...guestNames(st).map((n,i)=>({label:"ขออนุญาตชวน "+n+" มาเล่นที่บ้าน",result:"ผู้ใหญ่ทั้งสองบ้านตกลงนัดวันหยุด",delta:{friend:2},set:{fkGuest:n},baseIndex:i<3?i:i+1})),{label:"วันนี้อยากใช้เวลากับครอบครัว",result:"คุณพักกับคนที่บ้าน",delta:{r:2},set:{fkGuest:""},baseIndex:3}];
+ if(e.cw!=="child30")return prev.choices(e,st,s);
+ const d=D.get(e.id),award=prizes[e.id]?.(st,s)||0;
+ return d.rows.map((r,i)=>{const set={...r.set},delta={...r.delta};let result=r.result;
+ if(e.id==="child30_science_result")set.scienceWin=scienceWin(st,s);
+ if(award){delta.m=(delta.m||0)+award;result+=" ได้รับเงิน "+money(award)+" เข้าสู่เงินสดของคุณ";}
+ if((e.id==="child30_market_truth"&&i!==0)||(e.id==="child30_leader_check"&&i!==0)||(e.id==="child30_science_truth"&&i!==0)){const amount=e.id==="child30_market_truth"?100:e.id==="child30_leader_check"?150:1000,paid=Math.min(amount,Math.max(0,s.stats.m));delta.m=-paid;result+=" เงินที่นำมาชดใช้จากของคุณ "+money(paid)+(paid<amount?" ผู้ใหญ่ช่วยส่วนที่เหลือ":"")+".";}
+ return {...r,set,delta,result,baseIndex:i,special:r.label.startsWith("★")};
+ }).filter((r,i)=>!d.rows[i].need||d.rows[i].need(s,st));
+};
+function person(st,n,level){if(!n)return;st.people[n]={...(st.people[n]||{}),feeling:level==="distant"?"เว้นระยะ":"รู้สึกดี",boundary:level==="distant"?"รู้จักห่างๆ":"เพื่อนเท่านั้น"};}
+W.after=(st,old,e,n,ch,item)=>{prev.after(st,old,e,n,ch,item);if(e.cw!=="child30")return;const a=item.careerSet||ch.set||{},v={...H(old)},ints=new Set(v.interests||[]);for(const [k,x] of Object.entries(a))if(!["person","level","interest","exclude"].includes(k))v[k]=x;
+ if(a.interest)ints.add(a.interest);if(a.person){person(st,a.person,a.level);v.lastPerson=a.person;}if(a.exclude)person(st,a.exclude,"distant");v.interests=[...ints];st.child30=v;
+ if(a.interest==="study"&&!st.schoolLike)st.schoolLike="หนังสือ";if(a.interest==="sport"&&!st.schoolLike)st.schoolLike="กีฬา";if(a.interest==="art"&&!st.schoolLike)st.schoolLike="สร้างสรรค์";
+ if(e.id==="child30_games_result"&&!v.gameStop){st.vy_games_step=1;st.vy_games_status=v.gameRisk?"heavy":"casual";}
+ if(e.id==="child30_sport_result"&&!v.sportStop){st.vy_sports_step=1;st.vy_sports_status="train";}
+ const bad=(e.id==="child30_market_cash"&&n>=2||e.id==="child30_homework"&&n===2||e.id==="child30_circle_test"&&n===2||e.id==="child30_science_money"&&n===2||e.id==="child30_leader_cash"&&n===2);if(bad){st.fkConduct=Math.min(20,(st.fkConduct||0)+2);st.fkIncidents=(st.fkIncidents||0)+1;}
+};
+w.CHILDHOOD30={defs:D,quiet,story(e,st,s){const x=D.get(e.id).story;return typeof x==="function"?x(st,s):x},guestNames};
+})(window);
+
+const STORY_FLOW=(()=>{
   const links={
    familykid_grandmeal:"familykid_grandvisit",
    familykid_mall:"familykid_mallinvite",
@@ -30,7 +226,8 @@
    return {roots,episodes:[...episodes,...child]};
   }
   function overrideGate(e,st,s){
-   if(e.id==="familykid_friendvisit")return !!guest(s,st);
+   if(e.id==="familykid_friendvisit")return !!guest(s,st)&&window.PEOPLE.privateOK(st,guest(s,st));
+   if(e.id==="familykid_friendhome")return window.CHILDHOOD30.guestNames(st).length>0;
    return undefined;
   }
   function story(e,st,s){
@@ -76,7 +273,7 @@
    const last=s.history.findLast(x=>!x.free);
    if(!last||e.age<last.age)return "";
    if(e.age>last.age){const dt=e.age-last.age;return dt===1?"เวลาผ่านไปหนึ่งปี • อายุ "+e.age+" ปี":"เวลาผ่านไป "+dt+" ปี • อายุ "+e.age+" ปี";}
-   if(e.flowDirect||e.after)return "";
+   if(e.flowDirect||e.after||e.cw==="child30")return "";
    if(e.cw==="adultfamily"&&e.afType==="pregnancy")return "หลายสัปดาห์ต่อมา";
    return "อีกเหตุการณ์หนึ่งในช่วงอายุ "+e.age+" ปี";
   }
@@ -200,12 +397,12 @@ if(["switch1","career_reset","office","raise","fired","bribe","employee","layoff
 if(["med2","nurse2","law2","police2","judge2","actor2","athlete2","teacher1","tech1","trade1","service1"].includes(e.id)&&state.mode==="ธุรกิจ")return false;
 if(["love_drama","love_drama2"].includes(e.id)&&["โสด","แยกทาง"].includes(state.relationship))return false;if(e.origin&&s.origin?.[e.origin[0]]!==e.origin[1])return false;if(e.after){const n=s.answers[e.after];if(!Number.isInteger(n)||(e.choiceGate&&!e.choiceGate.includes(n)))return false}return LIFE.eligible(e,s)}
 const callbacks={child:[["glass",[1],"คุณนึกถึงวันที่เคยโทษเมฆเรื่องแก้วแตก และสิ่งที่เกิดตามมา"],["glass",[0,3],"คุณนึกถึงวันที่แม่เคยฟังคุณยอมรับว่าเป็นคนทำแก้วแตก"]],return:[["school_b",[2],"ฟ้าเคยรู้สึกกลัวคุณจากเหตุการณ์บ้านตัวต่อพังในวัยเด็ก"],["school_b",[0,1,3],"คุณยังจำบ้านตัวต่อที่เคยสร้างกับฟ้าในห้องอนุบาล"]],reunion:[["betray_a",[0,1,2,3],"เรื่องเงินธุรกิจที่เคยคุยกันยังเป็นส่วนหนึ่งของความทรงจำของทั้งคู่"]],pub:[["campus_a",[0,1,2,3],"คุณจำแพรได้จากกลุ่มเพื่อนมหาวิทยาลัย"]],family:[["love1",[1,3],"หลังจากความสัมพันธ์เดิมสิ้นสุดลง คุณกำลังทบทวนชีวิตในแบบที่ต้องการ"]]};
-function storyFor(e){const state=lifeState(),flowStory=STORY_FLOW.story(e,state,s),revised=NARRATIVE.story(e,state,s);const lead=[];if(e.id==="family"&&lifeState().parent==="มีลูก")lead.push("คุณมีลูกแล้ว และกำลังทบทวนว่าจะจัดชีวิตครอบครัวในช่วงต่อไปอย่างไร");if(e.id==="study_report"){const level=s.stats.knowledge>=18&&s.stats.discipline>=53?"ผลการเรียนโดดเด่นและมีความสม่ำเสมอ":s.stats.knowledge>=10&&s.stats.discipline>=45?"ผลการเรียนอยู่ในระดับที่ค่อยๆ พัฒนา":"ยังมีพื้นฐานและงานที่ต้องฝึกเพิ่ม";lead.push(level)}if(e.id==="early_love"&&lifeState().adultInterest)lead.push("คุณกำลังทำความรู้จักกับ "+lifeState().adultInterest);if(e.id==="birth"&&s.origin){lead.push("เรื่องราวของ "+s.origin.name+" เริ่มต้นขึ้นแล้ว"+(s.origin.province?" ณ "+s.origin.province:""));for(const [k,choices] of Object.entries(originSets))lead.push(choices[s.origin[k]].story)}const variant=e.after&&(e.annual?s.history.findLast(x=>x.id===e.after)?.result||e.variants?.[s.answers[e.after]]:e.variants?.[s.answers[e.after]]);if(variant)lead.push(variant);for(const [id,choices,txt] of [...(e.cross||[]),...(e.id==="child"&&revised!==undefined?[]:callbacks[e.id]||[])])if(choices.includes(s.answers[id]))lead.push(txt);return [...lead,flowStory??revised??(e.later?window.LIFE_LATER.story(e,lifeState(),s):e.merge?window.LIFE_MERGED.story(e,lifeState()):e.cw==="impact"&&window.LIFE_IMPACT?window.LIFE_IMPACT.story(e,lifeState(),s):e.cw==="workopportunity"&&window.WORK_OPPORTUNITY?window.WORK_OPPORTUNITY.story(e,lifeState(),s):e.cw?window.CAREER_WORLD.story(e,lifeState()):e.flex?window.LIFE_FLEX.replace(e.story,lifeState(),e.age):e.id==="child"?e.story.replace("ลูกวัยห้าขวบ","ลูก"):window.PEOPLE.story(e,lifeState()))].join("\n\n")}
+function storyFor(e){if(e.cw==='child30')return window.CHILDHOOD30.story(e,lifeState(),s);const state=lifeState(),flowStory=STORY_FLOW.story(e,state,s),revised=NARRATIVE.story(e,state,s);const lead=[];if(e.id==="family"&&lifeState().parent==="มีลูก")lead.push("คุณมีลูกแล้ว และกำลังทบทวนว่าจะจัดชีวิตครอบครัวในช่วงต่อไปอย่างไร");if(e.id==="study_report"){const level=s.stats.knowledge>=18&&s.stats.discipline>=53?"ผลการเรียนโดดเด่นและมีความสม่ำเสมอ":s.stats.knowledge>=10&&s.stats.discipline>=45?"ผลการเรียนอยู่ในระดับที่ค่อยๆ พัฒนา":"ยังมีพื้นฐานและงานที่ต้องฝึกเพิ่ม";lead.push(level)}if(e.id==="early_love"&&lifeState().adultInterest)lead.push("คุณกำลังทำความรู้จักกับ "+lifeState().adultInterest);if(e.id==="birth"&&s.origin){lead.push("เรื่องราวของ "+s.origin.name+" เริ่มต้นขึ้นแล้ว"+(s.origin.province?" ณ "+s.origin.province:""));for(const [k,choices] of Object.entries(originSets))lead.push(choices[s.origin[k]].story)}const variant=e.after&&(e.annual?s.history.findLast(x=>x.id===e.after)?.result||e.variants?.[s.answers[e.after]]:e.variants?.[s.answers[e.after]]);if(variant)lead.push(variant);for(const [id,choices,txt] of [...(e.cross||[]),...(e.id==="child"&&revised!==undefined?[]:callbacks[e.id]||[])])if(choices.includes(s.answers[id]))lead.push(txt);return [...(revised!==undefined||flowStory!==undefined?[]:lead),flowStory??revised??(e.later?window.LIFE_LATER.story(e,lifeState(),s):e.merge?window.LIFE_MERGED.story(e,lifeState()):e.cw==="impact"&&window.LIFE_IMPACT?window.LIFE_IMPACT.story(e,lifeState(),s):e.cw==="workopportunity"&&window.WORK_OPPORTUNITY?window.WORK_OPPORTUNITY.story(e,lifeState(),s):e.cw?window.CAREER_WORLD.story(e,lifeState()):e.flex?window.LIFE_FLEX.replace(e.story,lifeState(),e.age):e.id==="child"?e.story.replace("ลูกวัยห้าขวบ","ลูก"):window.PEOPLE.story(e,lifeState()))].join("\n\n")}
 function payYear(age){if(s.paidAge>=age)return;s.paidAge=age;const st=lifeState(),base=window.LIFE_FREEDOM.annual(st,s.stats,age)||{gross:0,expense:0,net:0},pay=age>=18&&s.origin&&window.LIFE_IMPACT?window.LIFE_IMPACT.annual(st,s,age,base):base,extra=window.LIFE_LATER.annual(st,age),interest=pay.interest||0;if(!pay.gross&&!extra.business&&!extra.care&&!extra.children&&!interest)return;const net=pay.net+extra.net,changes=LIFE.apply(s.stats,{m:net,savings:interest});s.history.push({id:"income_"+age,age,title:"รายรับและค่าใช้จ่ายประจำปี",label:"รายได้งาน "+money(pay.gross)+" · ผลกิจการ "+money(extra.business)+" · ค่าใช้จ่าย "+money(pay.expense+extra.care+extra.children)+(interest?" · ผลตอบแทนเงินออม "+money(interest):""),result:"เงินคงเหลือเปลี่ยนสุทธิ "+money(net)+(interest?" และเงินออมเพิ่ม "+money(interest):""),changes,free:{kind:"income"}});}
 function advance(){if(s.done)return;function settleBefore(next){for(let age=Math.max(0,s.checkedAge+1);age<Math.min(next,100);age++){s.checkedAge=age;payYear(age);const state=lifeState();window.LIFE_HEALTH?.annual(s,age,state);const death=window.LIFE_FLEX.death(s,age,state);if(death){s.death=death;s.finishedAge=death.age;s.done=true;s.at=events.length;return false}}return true}while(s.at<events.length){const e=events[s.at];if(!settleBefore(e.age))return;if(allowed(e)&&!Object.hasOwn(s.answers,e.id))return;s.at++}if(!settleBefore(100))return;s.done=true;s.finishedAge=100}
 function begin(o=null){s=fresh(o);advance();save();view="play";render()}
 function restore(){s=load();if(!s)return begin();if(s.pending){s.last=s.pending;const item=s.history[s.history.length-1];if(item&&item.id===s.pending.id)item.changes=s.pending.changes;s.pending=null;s.at++;}advance();save();view="play";render()}
-function gameChoices(e,state){if(e.later){const base=window.LIFE_LATER.choices(e,state,s).filter(c=>!c.unaffordable);return [...base,...window.LIFE_FREEDOM.specials(e,state,s,base)]}const base=STORY_FLOW.choices(e,state,s,NARRATIVE.choices(e,state,s,e.cw?window.CAREER_WORLD.choices(e,state,s):window.LIFE_FLEX.choiceFor(e,state)));return [...base,...window.LIFE_FREEDOM.specials(e,state,s,base),...window.LIFE_POLISH.specials(e,state,s,base)]}
+function gameChoices(e,state){if(e.cw==='child30')return window.CAREER_WORLD.choices(e,state,s);if(e.later){const base=window.LIFE_LATER.choices(e,state,s).filter(c=>!c.unaffordable);return [...base,...window.LIFE_FREEDOM.specials(e,state,s,base)]}const base=STORY_FLOW.choices(e,state,s,NARRATIVE.choices(e,state,s,e.cw?window.CAREER_WORLD.choices(e,state,s):window.LIFE_FLEX.choiceFor(e,state)));return [...base,...window.LIFE_FREEDOM.specials(e,state,s,base),...window.LIFE_POLISH.specials(e,state,s,base)]}
 function choose(e,n){if(s.pending||s.done||events[s.at]!==e)return;const state=lifeState(),c=gameChoices(e,state)[n];if(!c)return;const sceneKey=window.LIFE_QUALITY?.key(e,state)||"";const base=c.baseIndex??n;s.answers[e.id]=base;const changes=LIFE.apply(s.stats,c.continuityDelta&&!c.special?c.continuityDelta:e.cw||e.later||c.special?c.delta:LIFE.delta(e,base));s.history.push({id:e.id,age:e.age,title:NARRATIVE.title(e,state,s),label:c.label,result:c.result,changes,careerEra:18,...(sceneKey?{sceneKey}:{}),...(e.later?{laterAction:c.action||""}:{}),...(e.cw?{careerSet:c.set||{}}:{})});s.last={id:e.id,title:NARRATIVE.title(e,state,s),result:c.result,label:c.label,changes};s.at++;advance();save();render();document.getElementById("latest-outcome")?.scrollIntoView?.({block:"start",behavior:"instant"})}
 
 function takeFree(a){if(!s||s.done)return;const age=events[s.at]?.age,st=lifeState();if(!window.LIFE_FREEDOM.valid(st,s,age,a))return;const changes=LIFE.apply(s.stats,a.delta);const item={id:"activity_"+age+"_"+s.history.length,age,careerEra:17,title:a.sceneTitle||a.title,label:a.title,result:a.result,changes,free:{key:a.key,patch:a.patch||{}}};s.history.push(item);s.last=item;if(!allowed(events[s.at]))advance();save();render();}
@@ -233,7 +430,7 @@ const last=s.last||s.history[s.history.length-1],groups=el("div",undefined,"grou
 p.append(groups);const known=Object.entries(state.people);if(known.length){const section=el("details",undefined,"group"),sum=el("summary",undefined,"groupsummary");add(sum,el("span","คนที่รู้จักและความรู้สึก"),el("span",known.length+" คน","groupvalue"));section.append(sum);const grid=el("div",undefined,"statgrid");for(const [name,rel] of known){const item=el("div",undefined,"stat");add(item,el("strong",name),el("div",rel.feeling+" · "+rel.boundary+" · ความสนิท "+F.affinity(rel)+"/100","muted"));grid.append(item)}section.append(grid);p.append(section)}return p}
 function outcome(){const last=s.last||s.history[s.history.length-1];const latest=el("div",undefined,"latest");latest.id="latest-outcome";if(last){const previous=events.find(e=>e.id===last.id);add(latest,el("div","ผลล่าสุด • "+(last.title||s.history.findLast(x=>x.id===last.id)?.title||previous?.title||"การตัดสินใจ"),"latest-title"),el("p","เลือก: "+last.label,"muted"),el("p",last.result,"outcome-text"),effectsRow(last.changes))}else add(latest,el("div","ชีวิตของคุณกำลังเริ่มต้น","muted"));return latest}
 function render(){document.getElementById("menu").textContent=view==="journal"?"กลับไปเล่น":"บันทึกชีวิต";if(view==="setup"){renderSetup();return}
-if(view==="start"){const a=scene();add(a,el("div","เรื่องราวของชีวิต • v0.23","kicker"),el("h1","To Be a Good Man."),el("p","คุณไม่ได้เลือกที่จะเกิด แต่คุณเลือกได้ว่าจะใช้ชีวิตอย่างไร"),el("p","จากวัยเด็กไปจนถึงวัยชรา พบเพื่อน ความรัก เงิน งาน และเรื่องที่ไม่มีคำตอบง่ายๆ ทุกการเลือกจะทิ้งร่องรอยไว้ • "+events.filter(e=>!e.flex&&!e.cw&&!e.merge&&!e.freedom&&!e.later).length+" ฉากเดิม • "+window.CAREER_WORLD.count+" เส้นทางอาชีพ • "+window.LIFE_MERGED.detailCount+" เรื่องเฉพาะงานเสริม และชีวิตที่เชื่อมโยงกัน","muted"));const acts=el("div",undefined,"actions");if(load())add(acts,btn("เล่นต่อ",restore,"primary"),btn("เริ่มชีวิตใหม่",()=>{if(confirm("แทนที่บันทึกเดิมหรือไม่?")){view="setup";render()}}));else add(acts,btn("เริ่มต้นชีวิต",()=>{view="setup";render()},"primary"));if(load())add(acts,btn("ส่งออกเซฟ",exportLife,"small"));add(acts,btn("นำเข้าเซฟ",importLife,"small"));a.append(acts);return}
+if(view==="start"){const a=scene();add(a,el("div","เรื่องราวของชีวิต • v0.30","kicker"),el("h1","To Be a Good Man."),el("p","คุณไม่ได้เลือกที่จะเกิด แต่คุณเลือกได้ว่าจะใช้ชีวิตอย่างไร"),el("p","จากวัยเด็กไปจนถึงวัยชรา พบเพื่อน ความรัก เงิน งาน และเรื่องที่ไม่มีคำตอบง่ายๆ ทุกการเลือกจะทิ้งร่องรอยไว้ • "+events.filter(e=>!e.flex&&!e.cw&&!e.merge&&!e.freedom&&!e.later).length+" ฉากเดิม • "+window.CAREER_WORLD.count+" เส้นทางอาชีพ • "+window.LIFE_MERGED.detailCount+" เรื่องเฉพาะงานเสริม และชีวิตที่เชื่อมโยงกัน","muted"));const acts=el("div",undefined,"actions");if(load())add(acts,btn("เล่นต่อ",restore,"primary"),btn("เริ่มชีวิตใหม่",()=>{if(confirm("แทนที่บันทึกเดิมหรือไม่?")){view="setup";render()}}));else add(acts,btn("เริ่มต้นชีวิต",()=>{view="setup";render()},"primary"));if(load())add(acts,btn("ส่งออกเซฟ",exportLife,"small"));add(acts,btn("นำเข้าเซฟ",importLife,"small"));a.append(acts);return}
 if(!s){view="start";return render()}
 if(view==="journal"){const a=scene();add(a,el("div","สมุดบันทึก","kicker"),el("h2","เรื่องราวที่ผ่านมา"));const j=el("div",undefined,"journal");if(!s.history.length)j.append(el("p","ยังไม่มีการตัดสินใจ","muted"));for(const item of [...s.history].reverse()){const d=el("div",undefined,"entry");add(d,el("strong","อายุ "+item.age+" • "+item.title),el("p",item.label),el("p",item.result,"muted"));if(item.changes)d.append(effectsRow(item.changes));j.append(d)}add(a,j,btn("กลับไปเล่น",()=>{view="play";render()}),btn("ส่งออกเซฟ",exportLife,"small"),btn("นำเข้าเซฟ",importLife,"small"),btn("เริ่มชีวิตใหม่",newGame));return}
 if(s.done){const a=scene(),ending=lifeEnding(s,lifeState());add(a,el("div","บทส่งท้าย • อายุ "+(s.finishedAge??100)+" ปี","kicker"),el("h2",ending.title),el("p","ชีวิตนี้เป็นผลจากเส้นทางที่คุณเลือก ไม่ใช่คำตัดสินว่าคุณเป็นคนดีหรือเลวเพียงคะแนนเดียว","muted"));const summary=el("div",undefined,"result");for(const [label,body] of ending.lines){summary.append(el("h3",label),el("p",body));}add(a,summary);if(ending.notable.length){const memories=el("div",undefined,"result");memories.append(el("h3","เหตุการณ์สำคัญที่เกิดขึ้นจริงในชีวิตนี้"));for(const x of ending.notable)memories.append(el("p","อายุ "+x.age+" ปี — "+x.title+": "+x.label));add(a,memories);}add(a,profile(s.finishedAge??100),outcome(),btn("ย้อนอ่านเรื่องราว",()=>{view="journal";render()}),btn("ใช้ชีวิตอีกครั้ง",newGame,"primary"));return}
