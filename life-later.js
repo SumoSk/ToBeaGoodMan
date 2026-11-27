@@ -65,7 +65,7 @@ const W=w.CAREER_WORLD, S=w.STORY, E=w.EPISODES, L=w.LIFE;
 const prev={allowed:W.allowed,choices:W.choices,after:W.after,story:W.story,delta:L.delta};
 const all=[...S,...E], by=Object.fromEntries(all.map(e=>[e.id,e]));
 const c=(label,result,delta={},set={})=>({label,result,delta,set});
-const placeholders=Array.from({length:4},()=>c("เลือก",""));
+const placeholders=Array.from({length:4},()=>c("เลือก","ผลลัพธ์จะประเมินจากสถานะปัจจุบัน"));
 const add=(id,age,order,title,story,type,choices=placeholders)=>S.push({id:"youth_"+id,age,order,title,story,cw:"youth",youth:type,custom:true,choices});
 const story=(id,age,order,title,body,choices,requirements=[])=>S.push({id:"youth_"+id,age,order,title,story:body,custom:true,choices,requirements});
 const fields={doctor:["แพทยศาสตร์",6,66,true],vet:["สัตวแพทยศาสตร์",6,57,true],nurse:["พยาบาลศาสตร์",4,46,true],lawyer:["นิติศาสตร์",4,40,false],engineer:["วิศวกรรมศาสตร์",4,50,true],account:["บัญชี",4,34,false],software:["เทคโนโลยีสารสนเทศ",4,39,false],teacher:["ครุศาสตร์",4,38,false]};
@@ -134,7 +134,7 @@ for(let age=18;age<=99;age++){
  c("นิติ / บัญชี / ครุศาสตร์ / เทคโนโลยี","คุณยื่นสมัครเฉพาะกลุ่มนี้",{}, {youthStatus:"applying",youthPlan:"2"}),
  c("สัตวแพทย์ / พยาบาล / ครุศาสตร์ / บัญชี","คุณยื่นสมัครเฉพาะกลุ่มนี้",{}, {youthStatus:"applying",youthPlan:"3"})]);
  // Up to four admission offers plus retry / leave; stable indices for replay.
- add("results_"+age,age,age===18?.7:-88,"ผลการคัดเลือก","ผลการสมัครออกแล้ว คุณจะเลือกเส้นทางใด","results",Array.from({length:6},()=>c("เลือก","")));
+ add("results_"+age,age,age===18?.7:-88,"ผลการคัดเลือก","ผลการสมัครออกแล้ว คุณจะเลือกเส้นทางใด","results",Array.from({length:6},()=>c("เลือก","ผลลัพธ์จะประเมินจากสถานะปัจจุบัน")));
  if(age>18){
  add("study_"+age,age,-87,"ชีวิตนักศึกษา","ตอนนี้คุณกำลังเรียนในสาขาที่สอบเข้าได้ คุณต้องแบ่งเวลาระหว่างการเรียน สุขภาพ เพื่อน และรายได้","study",[
  c("อ่านและฝึกปฏิบัติอย่างสม่ำเสมอ","คุณเข้าใจเนื้อหามากขึ้น",{knowledge:5,discipline:4,skill:3,energy:-2}),
