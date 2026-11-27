@@ -488,3 +488,227 @@ W.after=(st,old,e,n,ch,item)=>{
  if(st.cxPet&&item.age-st.cxPetAge>15)st.cxPet="";
 };
 })(window);
+
+
+// Elder life individual continuity, care choices and family memories.
+(function elderLife(w){
+"use strict";
+const W=w.CAREER_WORLD,L=w.LIFE_LATER,P=w.PEOPLE,S=w.STORY;
+const prev={allowed:W.allowed,story:W.story,choices:W.choices,after:W.after,laterAfter:L.after,laterAllowed:L.allowed,annual:L.annual,peopleAllowed:P.allowed,privateOK:P.privateOK};
+const c=(label,result,delta={},set={})=>({label,result,delta,set});
+const stub=Array.from({length:4},()=>c("ตัดสินใจ","ผลขึ้นกับสถานการณ์ในเกม"));
+const templates=[
+["childvisit",84.1,"ลูกแต่ละคนมีชีวิตของตัวเอง","ลูกที่โตแล้วกลับมาติดต่อ"],
+["childfollow",84.2,"เรื่องที่ยังค้างกับลูก","ลูกกลับมาคุยเรื่องที่เกิดขึ้นก่อนหน้านี้"],
+["grand",84.3,"ชีวิตของหลานที่ค่อยๆ เติบโต","หลานอยากแบ่งปันเรื่องของตน"],
+["careplan",84.4,"ใครจะช่วยดูแลในวันที่ต้องการ","คุณอยากจัดความช่วยเหลือให้เหมาะกับชีวิต"],
+["carefollow",84.5,"ข้อตกลงที่ต้องทำให้ได้จริง","ถึงเวลาทบทวนการดูแลที่ตกลงไว้"],
+["estate",84.6,"ทรัพย์สินยังเป็นสิทธิของคุณ","ลูกที่โตแล้วชวนคุยเรื่องทรัพย์สิน"],
+["estatefollow",84.7,"หลังคุยเรื่องมรดก","คนในครอบครัวกลับมาคุยถึงความต้องการที่ต่างกัน"],
+["bereave",84.8,"วันที่ต้องบอกลาคนรัก","คนรักเสียชีวิตในเรื่องราวจำลองของเกม"],
+["grief",84.9,"ชีวิตหลังการสูญเสีย","คุณค่อยๆ จัดชีวิตหลังสูญเสียคนรัก"],
+["health",85.1,"ร่างกายกับชีวิตที่ยังอยากใช้","สุขภาพส่งผลต่อกิจวัตรที่คุณเลือก"],
+["healthfollow",85.2,"เมื่อกลับมาทบทวนสุขภาพ","คุณติดตามผลจากทางเลือกครั้งก่อน"],
+["luxury",85.3,"ใช้ทรัพย์สินเพื่อชีวิตที่ต้องการ","คุณมีเงินสำรองและเลือกความสุขตามกำลัง"],
+["mentor",85.4,"ประสบการณ์ที่คนรุ่นใหม่อยากเรียนรู้","มีคนขอเรียนรู้จากประสบการณ์ของคุณ"],
+["mentorFollow",85.5,"คนรุ่นใหม่กลับมาเล่าความคืบหน้า","คนที่เคยขอคำแนะนำกลับมาบอกผล"],
+["friend",85.6,"เพื่อนเก่าที่ยังจำกันได้","คนที่เคยรู้จักอยากกลับมาพบ"],
+["autonomy",85.7,"บ้านที่อยากใช้ชีวิตด้วยตัวเอง","คุณเลือกสภาพแวดล้อมและความช่วยเหลือตามความพร้อม"],
+["legacy",85.8,"เรื่องที่อยากฝากไว้","คุณมีสิทธิเลือกว่าจะส่งต่อเรื่องราวหรือสิ่งใด"]
+];
+for(let a=60;a<=99;a++)for(const [k,order,title,story] of templates)S.push({id:`elderx_${k}_${a}`,age:a,order,title,story,cw:"elderx",elderx:k,custom:true,choices:stub});
+const key=x=>x.name+"@"+x.born;
+const clamp=x=>Math.max(0,Math.min(100,x));
+const hash=s=>Array.from(s).reduce((a,x)=>(Math.imul(a,31)+x.charCodeAt(0))>>>0,17);
+const get=(st,x)=>st.elChildren?.[key(x)]||{bond:50,trust:50,life:["งานประจำ","งานอิสระ","กิจการ","ดูแลครอบครัว"][hash(key(x))%4],busy:hash(key(x)+"busy")%3,visits:0,expectation:0};
+const adults=(st,a)=>st.children.filter(x=>a-x.born>=20);
+const pick=(st,a,filter=()=>true)=>{const v=adults(st,a).filter(filter);return v.length?v[a%v.length]:null;};
+const find=(st,id)=>st.children.find(x=>key(x)===id);
+const currentPartner=st=>["คบกัน","อยู่ด้วยกัน"].includes(st.relationship)&&!!st.partnerName;
+const working=st=>["งานประจำ","งานประจำควบธุรกิจ","อิสระ","ธุรกิจ"].includes(st.mode)&&st.lateWork!=="retired"&&(!!st.profession||!!st.everWorked);
+const job=st=>W.by[st.profession]?.name||st.goal||"งานที่เคยทำ";
+const last=(s,k)=>s.history.findLast(x=>x.id.startsWith("elderx_"+k+"_"));
+const due=(s,k,a,n)=>!last(s,k)||a-last(s,k).age>=n;
+const dead=(st,n)=>!!n&&Object.hasOwn(st.elDeadPartners||{},n);
+const friend=(st,a)=>{const v=Object.keys(st.people||{}).filter(n=>n!==st.partnerName&&!dead(st,n)&&P.privateOK(st,n)&&st.people[n].feeling==="รู้สึกดี");return v.length?v[a%v.length]:"";};
+const support=(st,x)=>{const q=get(st,x);return q.bond+q.trust-q.busy*14-q.expectation*4;};
+const caregiver=(st,a)=>adults(st,a).slice().sort((x,y)=>support(st,y)-support(st,x))[0];
+const oldChildFor=(e,st)=>{let v=adults(st,e.age);if(e.later==="childwedding")v=v.filter(x=>!x.married);if(e.later==="grandchild")v=v.filter(x=>x.married&&x.grand<3&&e.age-(x.lastGrand??-100)>=4).sort((x,y)=>x.grand-y.grand);if(["childdebt","childsuccess"].includes(e.later))return v[e.age%Math.max(1,v.length)];if(e.later==="grandstudy")v=v.filter(x=>x.grand&&e.age-(x.firstGrand??e.age)>=6);return v[0];};
+const change=(st,x,d,tag,age)=>{if(!x)return;const id=key(x),p=get(st,x);st.elChildren={...(st.elChildren||{}),[id]:{...p,bond:clamp(p.bond+(d.bond||0)),trust:clamp(p.trust+(d.trust||0)),expectation:Math.max(0,Math.min(10,p.expectation+(d.expectation||0))),visits:p.visits+(d.visits||0),last:tag,lastAge:age}};};
+const childEffect=(x,bond,trust=0,expectation=0,visits=0)=>({elEffect:{id:key(x),bond,trust,expectation,visits}});
+const financiallyReady=(st,t)=>t.m+t.savings+t.assets>=200000;
+const bereaveDue=(st,s,a)=>{if(!currentPartner(st)||dead(st,st.partnerName)||a<65||a-(st.partnerSince??a)<2)return false;const age=65+hash(st.partnerName+"@"+(st.partnerSince??0)+"@"+(s.seed??0))%35;return a>=age;};
+W.allowed=(e,st,s)=>{
+ if(e.cw!=="elderx"){
+  if(e.id==="exreturn"&&st.elWidowed&&!st.pastRomance)return false;
+  if(e.cw==="adultx"&&e.ax==="socialfollow"&&dead(st,st.axSocial))return false;
+  if(e.id==="early_love"&&dead(st,st.adultInterest||st.teenBond||st.flirt))return false;
+  if(e.id==="new_love"&&dead(st,st.flirt))return false;
+  if(e.flex==="court"&&dead(st,st.candidate))return false;
+  return prev.allowed(e,st,s);
+ }
+ const a=e.age,t=s.stats;
+ switch(e.elderx){
+ case "childvisit":return !!pick(st,a)&&!st.elChildIssue&&a%3===1&&due(s,"childvisit",a,4);
+ case "childfollow":return !!find(st,st.elChildTarget)&&!!st.elChildIssue&&a>st.elChildAge&&due(s,"childfollow",a,2);
+ case "grand":return !!pick(st,a,x=>x.grand&&a-(x.firstGrand??a)>=6)&&a%4===2&&due(s,"grand",a,4);
+ case "careplan":return (t.physical<60||t.energy<35)&&!st.elCare&&due(s,"careplan",a,4)&&(a>=75||t.physical<40);
+ case "carefollow":return !!st.elCare&&a>st.elCareAge&&due(s,"carefollow",a,3);
+ case "estate":return financiallyReady(st,t)&&!!pick(st,a)&&!st.elEstateIssue&&a%4===0&&due(s,"estate",a,5);
+ case "estatefollow":return !!st.elEstateIssue&&!!find(st,st.elEstateTarget)&&a>st.elEstateAge&&due(s,"estatefollow",a,2);
+ case "bereave":return bereaveDue(st,s,a);
+ case "grief":return !!st.elGrief&&a>st.elLossAge&&due(s,"grief",a,2);
+ case "health":return (t.physical<65||t.energy<35)&&!st.elHealth&&due(s,"health",a,3);
+ case "healthfollow":return !!st.elHealth&&a>st.elHealthAge&&due(s,"healthfollow",a,2);
+ case "luxury":return t.m>=120000&&a%5===1&&due(s,"luxury",a,5);
+ case "mentor":return !!st.everWorked&&t.skill>=50&&t.reliable>=50&&!st.elMentor&&a%5===2&&due(s,"mentor",a,5);
+ case "mentorFollow":return !!st.elMentor&&a>st.elMentorAge;
+ case "friend":return !!friend(st,a)&&a%4===3&&due(s,"friend",a,4);
+ case "autonomy":return a%5===3&&due(s,"autonomy",a,5);
+ case "legacy":return a>=75&&a%5===4&&due(s,"legacy",a,5);
+ default:return false;
+ }};
+L.allowed=(e,st,s)=>{
+ if(e.later==="wealthheirs"&&adults(st,e.age).length<2)return false;
+ if(e.later==="carepaid"&&st.elCare==="paid")return false;
+ return prev.laterAllowed(e,st,s);
+};
+P.privateOK=(st,n)=>!dead(st,n)&&prev.privateOK(st,n);
+P.allowed=(e,st,s)=>{if(dead(st,e.personIntro)||dead(st,e.personBoundary))return false;return prev.peopleAllowed(e,st,s);};
+W.story=(e,st)=>{
+ if(e.cw!=="elderx")return prev.story(e,st);
+ const a=e.age;
+ switch(e.elderx){
+ case "childvisit":{const x=pick(st,a),q=get(st,x);return x.name+" อายุ "+(a-x.born)+" ปี ใช้ชีวิตในรูปแบบ"+q.life+" "+(q.bond<40?"ช่วงที่ผ่านมาเขาเว้นระยะจากคุณและวันนี้อยากคุยเรื่องที่ค้างใจ":q.busy===2?"เขามีภาระของตัวเองมาก แต่ติดต่อมาหาเมื่อมีเวลา":"เขาอยากแวะมาคุยและใช้เวลาด้วยกัน")+" คุณอยากตอบรับอย่างไร";}
+ case "childfollow":{const x=find(st,st.elChildTarget);return x.name+" จำเรื่องเมื่อคุณอายุ "+st.elChildAge+" ปีได้ "+(st.elChildIssue==="distance"?"เขายังรู้สึกว่าคุยกับคุณได้ไม่เต็มที่":"เขาอยากรักษาความสัมพันธ์และคุยเรื่องชีวิตของตน")+" คุณจะรับฟังอย่างไร";}
+ case "grand":{const x=pick(st,a,z=>z.grand&&a-(z.firstGrand??a)>=6);return "หลานคนหนึ่งในครอบครัวของ"+x.name+" อยากเล่าเรื่องความสนใจและชีวิตของเขาให้คุณฟัง ไม่จำเป็นต้องเลือกเส้นทางเดียวกับคุณ";}
+ case "careplan":{const x=caregiver(st,a);return "สุขภาพหรือพลังงานช่วงนี้ทำให้บางกิจวัตรยากขึ้น "+(x?x.name+" เป็นลูกที่คุณอาจขอคุยเรื่องความช่วยเหลือได้ แต่เขามีภาระและขอบเขตของตัวเอง":"คุณยังสามารถหาความช่วยเหลือจากคนที่ไว้ใจ ชุมชน หรือบริการได้ แม้ไม่มีลูก")+" คุณอยากวางแผนแบบไหน";}
+ case "carefollow":{const x=find(st,st.elCareChild);return "หลังวางแผนดูแลเมื่ออายุ "+st.elCareAge+" ปี "+(st.elCare==="family"&&x?x.name+" กลับมาคุยถึงตารางและสิ่งที่ช่วยได้จริง":st.elCare==="paid"?"บริการที่จ้างไว้ต้องทบทวนค่าใช้จ่ายและขอบเขต":"คุณทบทวนกิจวัตรและความช่วยเหลือที่เข้าถึงได้")+" คุณยังมีสิทธิเลือกวิธีใช้ชีวิต";}
+ case "estate":{const x=pick(st,a),q=get(st,x);return x.name+" ชวนคุยเรื่องทรัพย์สิน "+(q.expectation>=2||q.trust<40?"คำพูดของเขาเริ่มทำให้คุณไม่แน่ใจว่าความสนใจมาจากความสัมพันธ์หรือความคาดหวังเรื่องเงิน":"เขาอยากเข้าใจแผนชีวิตของคุณโดยยังไม่ได้ตกลงการแบ่งทรัพย์สิน")+" คุณไม่จำเป็นต้องโอนทรัพย์สินหรือสัญญาให้ใครตอนนี้";}
+ case "estatefollow":return find(st,st.elEstateTarget).name+" กลับมาคุยเรื่องทรัพย์สินที่เคยคุยกันเมื่ออายุ "+st.elEstateAge+" ปี "+(st.elEstateIssue==="pressure"?"คำสัญญาที่เคยให้ไว้ทำให้เกิดความคาดหวัง":"ทุกฝ่ายยังต้องเคารพการตัดสินใจของคุณ");
+ case "bereave":return st.partnerName+" คนรักที่ร่วมชีวิตกับคุณเสียชีวิตในเรื่องราวจำลองของเกม คุณต้องเผชิญความสูญเสียและเรื่องจำเป็นที่ต้องจัดการ โดยไม่ต้องฝืนเข้มแข็งในทันที";
+ case "grief":return "ผ่านมาระยะหนึ่งแล้วนับจากวันที่ "+st.elLostName+" จากไป คุณยังมีสิทธิคิดถึงคนเดิม ใช้ชีวิตคนเดียว พบเพื่อน หรือค่อยๆ เปิดใจเมื่อพร้อม";
+ case "health":return "ช่วงนี้สุขภาพหรือพลังงานทำให้กิจวัตรบางอย่างยากขึ้น แต่คุณยังมีเรื่องที่อยากทำ"+(working(st)?" รวมถึงงานที่ยังทำอยู่":"")+" คุณจะจัดการอย่างไร";
+ case "healthfollow":return "เมื่ออายุ "+st.elHealthAge+" ปี คุณเลือก"+(st.elHealth==="delay"?"เลื่อนการดูแลสุขภาพ":"เริ่มปรับวิธีดูแลตัวเอง")+" วันนี้คุณมีโอกาสทบทวนผลและปรับแผน";
+ case "mentor":return "คนรุ่นใหม่ขอคำแนะนำเกี่ยวกับ"+job(st)+" จากประสบการณ์ที่คุณสะสม ไม่จำเป็นต้องกลับไปทำงานเต็มเวลา";
+ case "mentorFollow":return "คนที่คุณตกลงให้คำแนะนำเมื่ออายุ "+st.elMentorAge+" ปี กลับมาเล่าว่าเขาลองทำตามแนวทางบางส่วนแล้วและอยากฟังความคิดเห็น";
+ case "friend":return friend(st,a)+" คนที่คุณเคยรู้จักและยังเปิดใจติดต่อกัน ส่งข้อความมาชวนพบ คุณอยากใช้เวลาร่วมกันแบบไหน";
+ default:return e.story;
+ }};
+W.choices=(e,st,s)=>{
+ if(e.cw!=="elderx")return prev.choices(e,st,s);
+ const a=e.age,t=s.stats;
+ switch(e.elderx){
+ case "childvisit":{const x=pick(st,a),base={elChildTarget:key(x),elChildAge:a};return [
+ c("ชวนกินข้าวและฟังชีวิตของลูก","ลูกได้ใช้เวลากับคุณโดยไม่ต้องพิสูจน์อะไร",{child:4,h:4},{...base,elChildIssue:"close",...childEffect(x,6,3,0,1)}),
+ c("ถามว่าช่วงนี้เขามีเรื่องอยากให้ช่วยไหม","คุณเข้าใจภาระของลูกเพิ่มขึ้น",{child:3,e:2},{...base,elChildIssue:"close",...childEffect(x,4,4,0,1)}),
+ c("ตำหนิว่าไม่ค่อยมาหาเหมือนที่ควร","ลูกเริ่มระวังการพูดเรื่องส่วนตัว",{child:-4,stress:3},{...base,elChildIssue:"distance",...childEffect(x,-7,-4)}),
+ c("ขอนัดวันอื่นตามความสะดวกของทั้งสองฝ่าย","คุณรักษาขอบเขตและยังเปิดโอกาสให้พบกัน",{selfcontrol:2,child:1},{...base,elChildIssue:"close",...childEffect(x,1,1)})];}
+ case "childfollow":{const x=find(st,st.elChildTarget);return [
+ c("รับฟังและยอมรับสิ่งที่เคยทำให้เขาเสียใจ","ลูกได้พูดในสิ่งที่ค้างใจ",{child:5,e:3},{elChildIssue:"",...childEffect(x,7,5)}),
+ c("ชวนทำกิจกรรมที่ลูกอยากทำ","ได้สร้างความทรงจำร่วมกันอีกครั้ง",{h:4,child:4},{elChildIssue:"",...childEffect(x,5,2)}),
+ c("บอกว่าลูกควรทำตามที่คุณต้องการ","ลูกยังรู้สึกว่าชีวิตของเขาไม่ถูกรับฟัง",{child:-4,stress:3},childEffect(x,-6,-4)),
+ c("เคารพพื้นที่ของลูกและขอคุยใหม่เมื่อพร้อม","ทั้งสองฝ่ายยังรักษาสิทธิเลือก",{selfcontrol:3},{elChildIssue:"",...childEffect(x,2,2)})];}
+ case "grand":{const x=pick(st,a,z=>z.grand&&a-(z.firstGrand??a)>=6);return [
+ c("ฟังสิ่งที่หลานชอบและให้กำลังใจ","หลานได้มีพื้นที่พูดเรื่องของตน",{h:4,child:3},childEffect(x,3,2)),
+ c("เล่าเรื่องชีวิตของคุณเมื่อวัยใกล้กัน","ครอบครัวได้แลกเปลี่ยนประสบการณ์",{h:3,experience:2},childEffect(x,2,2)),
+ c("พยายามให้หลานเลือกตามที่คุณคิดไว้","เกิดความเห็นต่างกับครอบครัวของลูก",{child:-3,stress:2},childEffect(x,-4,-3)),
+ c("สนับสนุนตามกำลังโดยไม่กำหนดอนาคตแทน","คุณรักษาขอบเขตของแต่ละรุ่น",{e:3,child:2},childEffect(x,3,2))];}
+ case "careplan":{const x=caregiver(st,a),q=x?get(st,x):null,can=x&&support(st,x)>=75;return [
+ x?c("ถาม "+x.name+" ว่าช่วยอะไรได้จริง",can?"ลูกตกลงช่วยตามเวลาที่มี ไม่ได้ต้องรับภาระทั้งหมด":"ลูกยังไม่พร้อมรับภาระมาก คุณต้องจัดทางเลือกอื่น",can?{energy:6,child:3,h:3}:{problem:3,h:-1},{elCare:can?"family":"community",elCareAge:a,elCareChild:key(x),...childEffect(x,can?3:1,2)}):c("ติดต่อชุมชนเพื่อขอข้อมูลช่วยเหลือ","คุณเริ่มหาทางเลือกที่เหมาะกับชีวิต",{network:3,problem:3},{elCare:"community",elCareAge:a}),
+ t.m>=18000?c("จ้างผู้ช่วยบางเวลาตามงบ 18,000 บาท","เริ่มบริการช่วยดูแลและมีค่าใช้จ่ายต่อเนื่อง",{m:-18000,energy:6,h:3},{paidCare:1,careStart:a,elCare:"paid",elCareAge:a}):c("สำรวจบริการที่จ่ายไหว","ยังไม่ได้จ้างและรักษาเงินสำรองไว้",{problem:4},{elCare:"community",elCareAge:a}),
+ c("ปรับบ้านและกิจวัตรตามกำลัง","คุณลดภาระและยังใช้ชีวิตได้ด้วยตัวเองตามความพร้อม",{problem:4,energy:3},{elCare:"self",elCareAge:a}),
+ c("ยังไม่อยากขอความช่วยเหลือ","ภาระเดิมยังอยู่และอาจต้องทบทวนอีก",{energy:-4,stress:3},{elCare:"self",elCareAge:a})];}
+ case "carefollow":{const x=find(st,st.elCareChild);return [
+ c("คุยขอบเขตและปรับตารางให้ทุกฝ่ายไหว","ความช่วยเหลือเหมาะกับชีวิตมากขึ้น",{energy:5,stress:-3},x?childEffect(x,3,3):{}),
+ c("ประเมินแผนใหม่จากสิ่งที่ทำได้จริง","คุณเปิดทางเลือกใหม่หากแผนเดิมไม่เหมาะ",{problem:4},{elCare:""}),
+ c("ยืนยันว่าคนอื่นต้องทำทุกอย่างตามที่คุณต้องการ","ความขัดแย้งเพิ่มขึ้นและแผนอาจใช้ไม่ได้",{h:-3,stress:4},{elCare:"",...(x?childEffect(x,-6,-4):{})}),
+ c("รักษาสิ่งที่ทำเองได้และขอความช่วยเหลือเฉพาะที่จำเป็น","คุณรักษาอิสระพร้อมรับแรงสนับสนุน",{energy:4,selfcontrol:3})];}
+ case "estate":{const x=pick(st,a),base={elEstateTarget:key(x),elEstateAge:a};return [
+ c("บันทึกความต้องการและหารือกับคนกลาง","คุณยังคงสิทธิในทรัพย์สินและลดความคลุมเครือ",{security:5,fair:3},{...base,elEstateIssue:"plan",estatePlan:true,...childEffect(x,1,3)}),
+ c("คุยเรื่องเงินโดยไม่ให้คำสัญญา","ลูกทราบว่าความสัมพันธ์ไม่ใช่การแลกทรัพย์สิน",{child:3,selfcontrol:3},{...base,elEstateIssue:"plan",...childEffect(x,2,3,-1)}),
+ c("สัญญาว่าจะให้มากขึ้นถ้ามาหาบ่อย","เกิดความคาดหวังและความไม่แน่นอนในครอบครัว",{fair:-5,stress:4},{...base,elEstateIssue:"pressure",...childEffect(x,1,-4,3)}),
+ c("ขอใช้ทรัพย์สินกับชีวิตของตัวเองก่อน","คุณยังไม่ผูกพันกับการแบ่งทรัพย์สิน",{security:3,selfcontrol:3},{...base,elEstateIssue:"plan",...childEffect(x,0,1)})];}
+ case "estatefollow":{const x=find(st,st.elEstateTarget);return [
+ c("ชี้แจงขอบเขตและใช้คนกลางหากจำเป็น","ความคาดหวังเริ่มชัดเจนขึ้น",{fair:4,security:4},{elEstateIssue:"",...childEffect(x,2,5,-2)}),
+ c("ฟังความต้องการของลูกโดยไม่รีบโอนเงิน","ทั้งคู่เข้าใจมุมมองที่ต่างกัน",{child:3,e:3},{elEstateIssue:"",...childEffect(x,4,2,-1)}),
+ c("เปลี่ยนคำสัญญาเพื่อให้เขาพอใจ","ความไม่แน่นอนเพิ่มขึ้น",{stress:5,fair:-4},childEffect(x,-2,-5,2)),
+ c("ขอหยุดการหารือและรักษาสิทธิของตัวเอง","คุณลดแรงกดดันโดยยังไม่ตัดสินใจ",{selfcontrol:4,stress:-2},{elEstateIssue:"",...childEffect(x,0,1)})];}
+ case "bereave":{const base={elLostName:st.partnerName,elLossAge:a,elGrief:"yes",elWidowed:true,relationship:"โสด",partnerName:"",married:"",candidate:"",flirt:"",adultInterest:"",teenBond:"",teenCrush:"",pastRomance:"",axSocial:"",axPair:"",romanceOpen:"ไม่"};return [
+ c("ใช้เวลากับความสูญเสียและคนที่ไว้ใจ","คุณไม่ต้องรีบผ่านความเศร้า",{h:-9,stress:6,r:3},base),
+ c("ขอคนที่ไว้ใจช่วยเรื่องจำเป็น","ภาระบางส่วนลดลงและคุณมีเวลาพัก",{h:-8,stress:4,problem:3},base),
+ c("เก็บสิ่งที่มีความหมายและให้เวลาตัวเอง","ความทรงจำยังมีคุณค่าแม้คนรักจากไป",{h:-7,energy:-3},base),
+ c("ขอพื้นที่ส่วนตัวหลังจัดเรื่องจำเป็น","คุณเลือกวิธีรับมือความเศร้าของตัวเอง",{h:-9,selfcontrol:3},base)];}
+ case "grief":return [
+ c("ค่อยๆ กลับไปทำสิ่งที่ชอบ","คุณสร้างจังหวะชีวิตใหม่โดยไม่ลืมคนเดิม",{h:5,energy:4},{elGrief:"",romanceOpen:"ไม่"}),
+ c("พบเพื่อนหรือคนที่ไว้ใจ","คุณมีพื้นที่เล่าความรู้สึก",{friend:4,h:4,stress:-3},{elGrief:""}),
+ c("ยังอยากมีเวลาส่วนตัว","คุณไม่จำเป็นต้องเริ่มความสัมพันธ์ใหม่",{energy:3,selfcontrol:3},{elGrief:""}),
+ c("เปิดใจรู้จักคนใหม่เมื่อพร้อม","คุณเปิดโอกาสให้ความสัมพันธ์ใหม่ โดยยังไม่ได้คบใคร",{social:3,confidence:2},{elGrief:"",romanceOpen:"เปิดใจ"})];
+ case "health":return [
+ c("นัดประเมินและปรับกิจวัตรตามความเหมาะสม","คุณเริ่มดูแลสุขภาพและรักษากิจกรรมที่ชอบ",{physical:5,energy:4,stress:-3},{elHealth:"care",elHealthAge:a}),
+ t.m>=8000?c("จัดบริการและการเดินทางที่สะดวกขึ้น 8,000 บาท","ลดภาระการเดินทาง ไม่ได้รับประกันผลการรักษา",{m:-8000,energy:6,physical:3},{elHealth:"care",elHealthAge:a}):c("สอบถามทางเลือกที่เหมาะกับงบ","คุณเริ่มจัดการข้อจำกัดของตัวเอง",{problem:4},{elHealth:"care",elHealthAge:a}),
+ c("เลื่อนการดูแลแม้เริ่มกระทบชีวิต","ปัญหายังไม่ได้รับการจัดการ",{physical:-5,stress:4},{elHealth:"delay",elHealthAge:a}),
+ c("ลดภาระบางอย่างโดยไม่เลิกสิ่งที่รักทั้งหมด","คุณเลือกปรับชีวิตให้เหมาะกับร่างกาย",{energy:6,h:3},{elHealth:"care",elHealthAge:a})];
+ case "healthfollow":return [
+ c("ติดตามผลและรักษากิจวัตรที่เหมาะสม","สุขภาพในเกมได้รับการดูแลต่อเนื่อง",{physical:4,energy:4,stress:-3},{elHealth:""}),
+ c("ขอข้อมูลเพิ่มเติมเพื่อวางแผน","คุณเข้าใจทางเลือกเพิ่มขึ้น",{knowledge:3,problem:3},{elHealth:""}),
+ c("กลับไปฝืนใช้ชีวิตเหมือนเดิม","ปัญหาอาจยังรบกวนชีวิต",{physical:-4,energy:-3}),
+ c("ปรับกิจกรรมโดยยังรักษาความสุขของตัวเอง","คุณมีพื้นที่สำหรับสิ่งที่อยากทำ",{h:4,energy:3},{elHealth:""})];
+ case "luxury":return [
+ c("ใช้ 40,000 บาทกับทริปที่อยากไปและจัดความสะดวก","คุณได้ใช้เงินเพื่อประสบการณ์ตามกำลัง",{m:-40000,h:8,experience:4}),
+ c("ปรับบ้านหรือซื้อของที่ช่วยให้ชีวิตสบายขึ้น 30,000 บาท","คุณได้คุณภาพชีวิตที่ต้องการ",{m:-30000,assets:15000,h:5,energy:4}),
+ c("จัดมื้อพิเศษกับคนที่อยากพบ 10,000 บาท","คุณใช้เงินสร้างช่วงเวลาที่มีความหมาย",{m:-10000,h:5,social:3}),
+ c("เก็บทรัพย์สินไว้และเลือกความสุขแบบเรียบง่าย","คุณไม่จำเป็นต้องใช้เงินเพื่อพิสูจน์ความสำเร็จ",{security:4,h:3})];
+ case "mentor":return [
+ c("ตกลงให้คำแนะนำเป็นบางครั้ง","คุณส่งต่อประสบการณ์โดยไม่รับงานเต็มเวลา",{respect:4,network:3},{elMentor:"yes",elMentorAge:a}),
+ c("ชวนเรียนรู้ผ่านงานเล็กที่ทำร่วมกัน","คุณได้ใช้ทักษะและคนรุ่นใหม่ได้ลองทำ",{skill:3,h:4},{elMentor:"yes",elMentorAge:a}),
+ c("แนะนำแหล่งเรียนรู้อื่นที่เหมาะสม","อีกฝ่ายยังมีทางเลือกโดยไม่เพิ่มภาระให้คุณ",{e:3,problem:2}),
+ c("ขอใช้เวลาส่วนตัวในช่วงนี้","คุณไม่จำเป็นต้องทำงานเพื่อพิสูจน์คุณค่าของตัวเอง",{energy:4,h:3})];
+ case "mentorFollow":return [
+ c("รับฟังและให้ข้อเสนอแนะตามประสบการณ์","คุณได้เห็นคนรุ่นใหม่เติบโต",{respect:4,h:5},{elMentor:""}),
+ c("ชื่นชมความพยายามโดยไม่กำหนดวิธีทั้งหมด","อีกฝ่ายได้เรียนรู้จากทางที่เลือก",{e:4,h:3},{elMentor:""}),
+ c("อยากลองร่วมงานต่อเมื่อทั้งคู่พร้อม","คุณยังมีโอกาสทำสิ่งที่มีความหมาย",{skill:3,network:3},{elMentor:""}),
+ c("ยินดีด้วยแล้วกลับไปใช้ชีวิตของตัวเอง","คุณส่งต่อประสบการณ์โดยไม่รับภาระเพิ่ม",{h:4,selfcontrol:2},{elMentor:""})];
+ case "friend":return [
+ c("นัดพบและคุยเรื่องชีวิตที่ผ่านมา","คุณได้ใช้เวลากับคนที่ยังติดต่อกัน",{friend:5,h:5}),
+ c("คุยโทรศัพท์ตามเวลาที่สะดวก","คุณยังรักษามิตรภาพได้แม้เดินทางยาก",{friend:3,h:3}),
+ c("ชวนทำกิจกรรมที่ทั้งคู่ยังสนใจ","ได้สร้างความทรงจำใหม่ร่วมกัน",{friend:4,experience:3}),
+ c("ขอเลื่อนโดยบอกตามตรง","คุณเคารพความพร้อมของตัวเอง",{energy:3})];
+ case "autonomy":return [
+ c("ปรับพื้นที่ให้ใช้ชีวิตได้สะดวกตามกำลัง","คุณรักษาความเป็นอิสระ",{problem:4,energy:3}),
+ c("คุยกับคนที่ไว้ใจเรื่องขอบเขตความช่วยเหลือ","คุณได้ทางเลือกโดยไม่ยกสิทธิทั้งหมดให้ใคร",{r:3,security:3}),
+ c("ให้คนอื่นตัดสินใจทุกอย่างโดยไม่ระบุความต้องการ","บางสิ่งอาจไม่ตรงกับความต้องการของคุณ",{h:-3,stress:3}),
+ c("อยู่แบบเดิมตราบเท่าที่ยังเหมาะสม","คุณรักษาวิถีชีวิตที่เลือกเอง",{h:4,selfcontrol:3})];
+ case "legacy":return [
+ c("บันทึกเรื่องที่เคยทำและสิ่งที่ได้เรียนรู้","คุณเก็บประสบการณ์ไว้ให้คนที่อยากรับฟัง",{h:5,satisfaction:4}),
+ c("ชวนคนที่ไว้ใจคุยเรื่องที่ยังค้างใจ","คุณได้พื้นที่พูดถึงสิ่งที่มีความหมาย",{e:3,r:3}),
+ c("ใช้เวลาทำสิ่งที่ยังอยากทำในวันนี้","คุณให้คุณค่ากับชีวิตปัจจุบัน",{h:5,energy:3}),
+ c("ไม่ต้องการฝากอะไรเป็นพิเศษ","คุณไม่จำเป็นต้องทิ้งผลงานเพื่อพิสูจน์ชีวิต",{selfcontrol:3,h:3})];
+ default:return e.choices;
+ }};
+W.after=(st,old,e,n,ch,item)=>{
+ prev.after(st,old,e,n,ch,item);
+ // Apply chosen per-child changes from the stored dynamic choice, never recompute a past outcome.
+ if(e.cw==="elderx"&&ch.set?.elEffect){const x=find(st,ch.set.elEffect.id);change(st,x,ch.set.elEffect,item.title,item.age);delete st.elEffect;}
+ if(e.cw==="elderx"&&e.elderx==="bereave"){
+  st.elDeadPartners={...(st.elDeadPartners||{}),[old.partnerName]:item.age};
+  if(st.people[old.partnerName])st.people[old.partnerName]={...st.people[old.partnerName],feeling:"เสียชีวิต",boundary:"ไม่ติดต่อ"};
+ }
+ // Existing work/parent arcs supply real childhood memories to the individual child record.
+ if(e.cw==="adultx"&&e.ax==="child"){const x=st.children.find(z=>z.name===st.axChildName&&z.born===st.axChildBorn);change(st,x,{bond:n===2?-7:5,trust:n===2?-4:3},item.title,item.age);}
+ if(e.cw==="adultx"&&e.ax==="childfollow"){const x=st.children.find(z=>z.name===old.axChildName&&z.born===old.axChildBorn);change(st,x,{bond:n===2?-5:4,trust:n===2?-4:3},item.title,item.age);}
+ if(e.cw==="crossx"&&e.crossx==="collision"){const x=st.children.find(z=>z.name===st.cxChild&&z.born===st.cxChildBorn);change(st,x,{bond:n===0?-7:5,trust:n===0?-3:3},item.title,item.age);}
+ if(e.cw==="crossx"&&e.crossx==="collisionfollow"){const x=st.children.find(z=>z.name===old.cxChild&&z.born===old.cxChildBorn);change(st,x,{bond:n===2?-5:4,trust:n===2?-3:3},item.title,item.age);}
+ if(currentPartner(st)&&!dead(st,st.partnerName)&&st.elWidowed)st.elWidowed=false;
+};
+L.after=(st,old,e,n,item)=>{
+ const childArc=["childwedding","grandchild","childdebt","childsuccess","grandstudy"].includes(e.later),x=childArc?oldChildFor(e,st):null;
+ prev.laterAfter(st,old,e,n,item);
+ // Child creation is handled by the original module. Profiles are derived lazily and replayed from history.
+ if(x){const negative=n===2&&["childwedding","grandchild","childdebt"].includes(e.later);change(st,x,{bond:negative?-5:3,trust:negative?-4:2,expectation:e.later==="childdebt"&&n===2?2:0},item.title,item.age);}
+ if(e.later==="careconflict"&&item.laterAction==="loseCare"&&st.elCare==="paid")st.elCare="";
+ if(e.cw==="elderx"&&e.elderx==="bereave"&&st.people[st.elLostName])st.people[st.elLostName]={...st.people[st.elLostName],feeling:"เสียชีวิต",boundary:"ไม่ติดต่อ"};
+};
+L.annual=(st,a)=>prev.annual(st,a);
+w.ELDER={childProfile:get,childKey:key,caregiver,support,dead};
+})(window);
