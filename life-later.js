@@ -1082,7 +1082,7 @@ c("จำชื่อของเล่นไว้เป็นของขว�
 case "seaoffer":return [
 c("อยากไปทะเลกับครอบครัว",budget==="modest"?"ครอบครัววางแผนไปแบบประหยัดเมื่อจัดค่าเดินทางได้":"ครอบครัวตกลงแผนเดินทางตามงบและเวลา",{h:3,r:2},{fkTrip:"sea"}),
 c("อยากไปสวนใกล้บ้านแทน","ครอบครัวรับฟังทางเลือกที่ไม่ต้องเดินทางไกล",{physical:2,r:2}),c("อยากไปเยี่ยมญาติแทนถ้าสะดวก","ครอบครัวรับฟังและยังไม่ตกลงการเดินทาง",{r:2}),c("ขออยู่บ้านเล่นและพัก","คุณเลือกวันหยุดเรียบง่าย",{h:3,energy:2})];
-case "parenttalk":{const proposed=st.fkGrand?"grand":home==="strict"?"home":home==="busy"?"club":"support";return [
+case "parenttalk":{const proposed=home==="strict"?"home":home==="busy"?(st.fkGrand?"grand":"club"):home==="free"?"club":st.fkGrand?"grand":"support";return [
 c("เล่าว่าช่วงนี้หงุดหงิดหรือไม่สบายใจ","ผู้ใหญ่รับฟังและเสนอทดลองปรับสภาพแวดล้อมให้เหมาะกับคุณ",{r:3,social:2},{fkEnv:proposed,fkSignal:-1}),
 c("ขอให้พ่อแม่ช่วยตั้งกติกาที่เข้าใจง่าย","ครอบครัวตกลงตารางที่ชัดขึ้น",{discipline:3,r:2},{fkEnv:"home",fkSignal:-1}),
 c("ยังไม่อยากคุยและไม่ร่วมมือ","ผู้ใหญ่ตัดสินใจทดลองปรับกิจวัตรโดยยังดูแลความปลอดภัยและการเรียน",{stress:3},{fkEnv:proposed,fkSignal:1}),
@@ -1105,4 +1105,53 @@ if(st.fkGrand)extra.push(act("grand","ขอไปเยี่ยม"+grand(st),
 return [...base,...extra.filter(x=>F.valid(st,s,a,x))];
 };
 F.replay=(st,item)=>{prev.replay(st,item);signal(st,item.free?.patch?.familySignal||0);};
+})(window);
+
+
+// Concrete alternate childhood environments and new contacts.
+(function familyEnvironment(w){
+"use strict";
+const W=w.CAREER_WORLD,P=w.PEOPLE,S=w.STORY;
+const prev={allowed:W.allowed,after:W.after};
+const c=(label,result,delta={},set={})=>({label,result,delta,set});
+const add=(id,age,order,title,story,gate,choices)=>S.push({id:"familyenv_"+id,age,order,title,story,cw:"familyenv",env:gate,custom:true,choices});
+add("grand",8,8.2,"บ่ายแรกที่บ้านญาติ","หลังตกลงปรับกิจวัตร ผู้ใหญ่พาคุณไปใช้เวลาหลังเลิกเรียนที่บ้านญาติที่เคยรู้จัก ที่นั่นมีกติกาเรื่องการเล่นและการทำการบ้านต่างจากบ้านของคุณ","grand",[
+c("ช่วยจัดของและทำการบ้านก่อนเล่น","คุณได้ทดลองกิจวัตรใหม่และผู้ใหญ่ชื่นชมความพยายาม",{discipline:3,responsibility:3,r:2},{fkEnvGood:true}),
+c("ชวนญาติเล่าเรื่องและทำของเล่นด้วยกัน","คุณได้สร้างความสัมพันธ์กับผู้ใหญ่ที่ดูแล",{creative:3,r:4,h:2},{fkEnvGood:true}),
+c("บ่นว่าอยากกลับบ้านและไม่ทำตามกติกา","ญาติรับฟังว่าคุณคิดถึงบ้าน แต่ยังต้องหาข้อตกลงร่วมกัน",{stress:3,r:-2},{fkEnvGood:false}),
+c("ขอให้ผู้ใหญ่ช่วยจัดตารางที่เข้าใจง่าย","คุณได้ฝึกบอกความต้องการและหาวิธีปรับตัว",{problem:3,selfcontrol:2},{fkEnvGood:true})]);
+add("club",8,8.3,"วันแรกที่ชมรมหลังเลิกเรียน","ครูพาคุณไปพบกลุ่มเด็กที่ทำกิจกรรมหลังเลิกเรียน เด็กชื่อใบหม่อนเข้ามาแนะนำตัวและชวนสร้างของเล่นจากกระดาษ","club",[
+c("ชวนใบหม่อนสร้างของเล่นด้วยกัน","ทั้งคู่แบ่งงานและเริ่มรู้จักกัน",{creative:3,friend:3},{fkClubFriend:true,fkEnvGood:true}),
+c("ลองสร้างของเล่นของตัวเองก่อน","ครูช่วยให้คุณเรียนรู้ในจังหวะของตัวเอง",{skill:3,confidence:2},{fkEnvGood:true}),
+c("บอกครูว่ายังไม่อยากเข้ากิจกรรม","ครูรับฟังและให้คุณดูคนอื่นก่อนได้",{selfcontrol:2},{fkEnvGood:false}),
+c("ชวนใบหม่อนลองทำอย่างอื่นด้วยกัน","ทั้งคู่ได้แลกเปลี่ยนความสนใจ",{friend:3,social:2},{fkClubFriend:true,fkEnvGood:true})]);
+add("home",8,8.4,"ตารางใหม่บนตู้เย็น","หลังตกลงปรับกิจวัตร พ่อแม่ติดตารางเวลาเล่น ทำการบ้าน และพักผ่อนบนตู้เย็น คุณได้รับโอกาสช่วยปรับตารางด้วย","home",[
+c("ช่วยจัดเวลาที่เหมาะกับตัวเอง","ครอบครัวตกลงตารางที่เข้าใจร่วมกัน",{discipline:4,r:3},{fkEnvGood:true}),
+c("ขอเพิ่มเวลาเล่นหลังทำการบ้านเสร็จ","คุณได้ฝึกต่อรองและรักษาข้อตกลง",{problem:3,h:3},{fkEnvGood:true}),
+c("ไม่ทำตามตารางและฉีกกระดาษทิ้ง","ผู้ใหญ่ต้องหยุดคุยเรื่องตารางและกลับมาหาสาเหตุ",{stress:3,r:-3},{fkEnvGood:false}),
+c("ขอลองทีละข้อก่อน","ครอบครัวช่วยให้คุณเริ่มจากสิ่งที่ทำได้",{patience:3,responsibility:2},{fkEnvGood:true})]);
+add("support",8,8.5,"คนที่ช่วยฟังโดยไม่ดุ","หลังคุยกันที่บ้าน ผู้ใหญ่พาคุณไปพบครูหรือผู้ช่วยที่เหมาะกับเด็ก เขาชวนวาดรูปและเล่าว่าเกิดอะไรขึ้นเวลาโกรธ","support",[
+c("วาดภาพตอนที่รู้สึกโมโห","คุณได้ฝึกสื่อสารอารมณ์ผ่านรูป",{creative:3,selfcontrol:3},{fkEnvGood:true}),
+c("ลองฝึกวิธีขอพักเมื่อเริ่มโกรธ","คุณได้วิธีจัดการอารมณ์อีกแบบ",{selfcontrol:4,patience:2},{fkEnvGood:true}),
+c("ขอนั่งเงียบๆ ก่อน","ผู้ใหญ่ให้พื้นที่โดยไม่บังคับให้เล่า",{energy:2},{fkEnvGood:false}),
+c("บอกว่าคิดถึงบ้านและอยากให้พ่อแม่มาด้วย","ผู้ใหญ่รับฟังความต้องการและช่วยจัดการตามความเหมาะสม",{r:3,confidence:2},{fkEnvGood:true})]);
+add("clubfriend",9,13,"ใบหม่อนที่ยังจำได้","ใบหม่อน เด็กที่คุณเคยเลือกทำกิจกรรมด้วยกันในชมรม ส่งของเล่นกระดาษมาให้และถามว่าวันนี้อยากเล่นด้วยกันไหม","friend",[
+c("ชวนทำของเล่นชิ้นใหม่","ทั้งคู่รักษามิตรภาพที่เริ่มจากชมรม",{friend:4,creative:3}),c("ขอบคุณและคุยเรื่องที่ชอบ","คุณได้รู้จักเพื่อนมากขึ้น",{friend:3,social:2}),c("ขอไว้วันอื่น","ใบหม่อนให้พื้นที่คุณ",{patience:2}),c("บอกว่าไม่อยากเล่นด้วยแล้ว","คุณบอกขอบเขตโดยไม่ต้องทะเลาะ",{selfcontrol:2},{fkClubFriend:false})]);
+add("retry",10,9,"แผนใหม่ที่ยังต้องลอง","ครอบครัวยังทดลองปรับกิจวัตร เพราะแผนก่อนหน้ายังไม่เหมาะทั้งหมด วันนี้คุณกับผู้ใหญ่ลองตกลงขั้นตอนที่ทำได้จริง","retry",[
+c("เลือกเป้าหมายเล็กๆ ที่ทำได้ทุกวัน","คุณได้ฝึกตามข้อตกลงที่เป็นไปได้",{discipline:4,confidence:2},{fkEnv:"",fkTried:false}),
+c("ขอเปลี่ยนกิจกรรมให้ตรงกับสิ่งที่ชอบ","ครอบครัวปรับแผนตามความต้องการของคุณ",{problem:3,h:3},{fkEnv:"",fkTried:false}),
+c("ขอผู้ใหญ่ช่วยทบทวนปัญหาที่ค้าง","คุณได้พื้นที่สื่อสารโดยไม่ต้องรับผิดชอบลำพัง",{r:3,selfcontrol:3},{fkEnv:"",fkTried:false}),
+c("ยังไม่พร้อมเปลี่ยนแปลง","ผู้ใหญ่ยังคงสนับสนุนและให้เวลาคุณ",{patience:2},{fkTried:true})]);
+W.allowed=(e,st,s)=>{
+if(e.cw!=="familyenv")return prev.allowed(e,st,s);
+if(e.env==="friend")return !!st.fkClubFriend&&P.privateOK(st,"ใบหม่อน");
+if(e.env==="retry")return !!st.fkEnv;
+return st.fkEnv===e.env&&!!st.fkTried;
+};
+W.after=(st,old,e,n,ch,item)=>{
+prev.after(st,old,e,n,ch,item);
+if(e.id==="familyenv_club"&&st.fkClubFriend)st.people["ใบหม่อน"]={...(st.people["ใบหม่อน"]||{}),feeling:"รู้สึกดี",boundary:"เปิดใจ"};
+if(e.id==="familyenv_clubfriend"&&n===3&&st.people["ใบหม่อน"])st.people["ใบหม่อน"]={...st.people["ใบหม่อน"],feeling:"เว้นระยะ",boundary:"ไม่ติดต่อ"};
+if(e.cw==="familyenv"&&["grand","club","home","support"].includes(e.env))st.fkConduct=Math.max(0,(st.fkConduct||0)+(st.fkEnvGood?-2:1));
+};
 })(window);
