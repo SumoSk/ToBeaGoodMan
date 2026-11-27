@@ -1875,3 +1875,23 @@ F.specials=(e,st,s,base)=>{
 };
 w.LIFE_QUALITY={key,cap,annual};
 })(window);
+
+
+// Meaningful story quality gate: voluntary everyday scenes, preserve existing story IDs and caps.
+(function meaningfulLife(w,ids){
+"use strict";
+const W=w.CAREER_WORLD,F=w.LIFE_FREEDOM,prev=W.allowed,Q=w.LIFE_QUALITY||{};
+const optional=new Set(ids),byAge=new Map();
+for(const e of w.STORY)if(optional.has(e.id)){if(!byAge.has(e.age))byAge.set(e.age,[]);byAge.get(e.age).push(e);}
+W.allowed=(e,st,s)=>{
+ if(optional.has(e.id)||e.cw==="adultx"&&e.ax==="ordinary")return false;
+ if(e.cw==="elderx"&&e.elderx==="autonomy"&&s.stats.physical>=60&&s.stats.energy>=40)return false;
+ return prev(e,st,s);
+};
+const options=(st,s,age)=>(byAge.get(age)||[]).filter(e=>!Object.hasOwn(s.answers,e.id)&&!s.history.some(x=>x.free?.patch?.optionalScene===e.id)).map(e=>{
+ const base=e.choices;
+ const choices=[...base,...(F.specials?.(e,st,s,base)||[])];
+ return {id:e.id,title:e.title,story:e.story,actions:choices.map(c=>({key:"optional_"+e.id,title:(c.special?"★ ":"")+c.label,sceneTitle:e.title,result:c.result,delta:{...c.delta},patch:{optionalScene:e.id}})).filter(a=>F.valid(st,s,age,a))};
+}).filter(e=>e.actions.length);
+w.LIFE_QUALITY={...Q,options,optionalIds:ids.slice()};
+})(window,["year_5_1","year_6_0","year_7_0","year_7_1","year_8_1","year_9_0","year_10_0","year_10_1","year_11_0","year_11_1","year_12_1","year_13_0","year_15_0","year_15_1","year_16_0","year_16_1","year_17_0","year_19_0","year_19_1","year_20_1","year_21_0","year_21_1","year_22_0","year_22_1","year_23_0","year_24_0","year_24_1","year_25_0","year_26_0","year_26_1","year_27_1","year_28_0","year_28_1","year_29_0","year_30_0","year_30_1","year_31_0","year_31_1","year_32_1","year_33_0","year_33_1","year_34_0","year_34_1","year_35_1","year_37_0","year_37_1","year_38_1","year_39_0","year_40_0","year_40_1","year_41_1","year_42_0","year_42_1","year_43_1","year_44_0","year_44_1","year_45_1","year_46_1","year_47_0","year_47_1","year_48_0","year_48_1","year_49_0","year_49_1","year_50_1","year_51_0","year_51_1","year_52_0","year_52_1","year_53_0","year_53_1","year_54_1","year_55_1","year_56_1","year_57_0","year_57_1","year_58_0","year_58_1","year_59_0","year_59_1","year_60_1","year_61_0","year_61_1","year_62_0","year_62_1","year_63_0","year_63_1","year_64_1","year_65_0","year_65_1","year_66_1","year_67_0","year_67_1","year_68_0","year_68_1","year_69_1","year_70_1","year_71_0","year_71_1","year_72_1","year_73_0","year_74_0","year_74_1","year_75_1","year_76_1","year_77_0","year_77_1","year_78_1","year_79_0","year_79_1","year_80_1","year_81_0","year_81_1","year_82_0","year_82_1","year_83_0","year_83_1","year_84_1","year_85_0","year_85_1","year_86_1","year_87_0","year_87_1","year_88_1","year_89_0","year_89_1","year_90_1","year_91_0","year_91_1","year_92_1","year_93_0","year_93_1","year_94_0","year_94_1","year_95_1","year_96_0","year_97_0","year_97_1","year_98_1","year_99_1"]);
