@@ -282,7 +282,7 @@ const same=st=>working(st)&&st.axWork===workKey(st)&&st.axMode===st.mode;
 const job=st=>W.by[st.profession]?.name||st.mode||"งาน";
 const last=(s,k)=>s.history.findLast(x=>x.id.startsWith("adultx_"+k+"_"));
 const due=(s,k,a,n)=>!last(s,k)||a-last(s,k).age>=n;
-const child=(st,a)=>st.children?.find(x=>a-x.born>=5&&a-x.born<=17);
+const child=(st,a)=>{const kids=st.children?.filter(x=>a-x.born>=5&&a-x.born<=17)||[];return kids[a%kids.length];};
 const name=(st,a)=>["กานต์","ตะวัน","ขิม","พีท","เมษา","นนท์","พิมพ์","บีม","แป้ง","อาร์ต"].find(n=>!st.people?.[n])||"กานต์ (รู้จักเมื่ออายุ "+a+")";
 const privateOK=(st,n)=>!!n&&P.privateOK(st,n);
 const role=st=>{const g=W.by[st.profession]?.group||"";if(/สุขภาพ|ดูแล/.test(g))return ["ผู้รับบริการ","การดูแลและประสานงาน","ความปลอดภัยและความเป็นส่วนตัว"];if(/กฎหมาย|ยุติธรรม|สาธารณะ/.test(g))return ["ผู้เกี่ยวข้อง","การตรวจสอบข้อมูลและเอกสาร","ความเป็นธรรมและกติกา"];if(/เทคโนโลยี|ดิจิทัล|วิทยาศาสตร์|อุตสาหกรรม/.test(g))return ["ผู้ใช้งานหรือผู้ว่าจ้าง","การแก้ปัญหาและทดสอบงาน","ความถูกต้องและคุณภาพ"];if(/เกษตร|อาหาร|ฝีมือ|ช่าง/.test(g))return ["ลูกค้าหรือผู้รับสินค้า","การจัดวัตถุดิบและตรวจคุณภาพ","ความปลอดภัยและต้นทุน"];if(/บันเทิง|สร้างสรรค์|ศิลปะ|กีฬา/.test(g))return ["ผู้ชม ผู้ร่วมงาน หรือผู้ว่าจ้าง","การซ้อมและสร้างผลงาน","คุณภาพผลงานและข้อตกลง"];if(/การเงิน|ธุรกิจ|สำนักงาน/.test(g))return ["ลูกค้าหรือผู้เกี่ยวข้อง","การตรวจตัวเลขและประสานงาน","ความถูกต้องและความน่าเชื่อถือ"];if(/การบิน|ท่องเที่ยว/.test(g))return ["ผู้โดยสารหรือผู้รับบริการ","การจัดตารางและบริการ","ความปลอดภัยและมาตรฐาน"];return ["ลูกค้าหรือผู้ร่วมงาน","การจัดลำดับงาน","คุณภาพและความรับผิดชอบ"];};
@@ -377,5 +377,114 @@ W.after=(st,old,e,n,ch,item)=>{
  if(e.ax==="reunion"&&n>=2)person(old.axContact,n===2?"work":"distance");
  if(e.ax==="social"&&st.axSocial)person(st.axSocial,st.axSocialBond);
  if(e.ax==="socialfollow"&&old.axSocial&&n>=1)person(old.axSocial,n===1?"friend":n===3?"distance":"polite");
+};
+})(window);
+
+
+// Concurrent life stories and individual long memories.
+(function crossLife(w){
+"use strict";
+const W=w.CAREER_WORLD,P=w.PEOPLE,S=w.STORY;
+const prev={allowed:W.allowed,choices:W.choices,story:W.story,after:W.after};
+const c=(label,result,delta={},set={})=>({label,result,delta,set});
+const stub=Array.from({length:4},()=>c("ตัดสินใจ","ผลจะขึ้นกับสถานการณ์ในเกม"));
+const working=st=>["งานประจำ","งานประจำควบธุรกิจ","ธุรกิจ","อิสระ"].includes(st.mode)&&st.lateWork!=="retired"&&(!!st.profession||!!st.everWorked);
+const partner=st=>["คบกัน","อยู่ด้วยกัน"].includes(st.relationship)&&!!st.partnerName;
+const last=(s,k)=>s.history.findLast(x=>x.id.startsWith("crossx_"+k+"_"));
+const due=(s,k,a,n)=>!last(s,k)||a-last(s,k).age>=n;
+const job=st=>W.by[st.profession]?.name||st.mode||"งาน";
+const kids=(st,a)=>st.children?.filter(x=>a-x.born>=5&&a-x.born<=17)||[];
+const schoolChild=(st,a)=>{const v=kids(st,a);return v[a%v.length];};
+const memory=(st,a)=> (st.axMemories||[]).find(m=>a-m.age>=10&&!m.revisited&&(m.kind==="child"?st.children?.some(x=>x.name===m.name&&x.born===m.born):m.kind==="partner"?partner(st)&&st.partnerName===m.name:P.privateOK(st,m.name)));
+const parentName=st=>!st.parentsLost?.mother?"แม่":!st.parentsLost?.father?"พ่อ":"";
+const goodFriend=st=>Object.keys(st.people||{}).find(n=>n!==st.partnerName&&P.privateOK(st,n)&&st.people[n]?.feeling==="รู้สึกดี");
+const templates=[
+["collision",72.6,"สองเรื่องสำคัญในวันเดียวกัน","งานและครอบครัวต้องการเวลาของคุณพร้อมกัน"],
+["collisionfollow",72.7,"สิ่งที่เกิดขึ้นหลังวันนั้น","ลูกและผู้เล่นมีเรื่องที่ยังคุยกันไม่จบ"],
+["burnout",72.8,"วันที่ร่างกายเริ่มส่งสัญญาณ","งานต่อเนื่องทำให้เหนื่อยจนการใช้ชีวิตเริ่มเปลี่ยน"],
+["recovery",72.9,"ลองทบทวนวิธีใช้ชีวิต","ถึงเวลาตรวจผลจากสิ่งที่เคยเลือก"],
+["parent",73.6,"เวลาที่ให้พ่อแม่","ผู้ปกครองที่ยังมีชีวิตอยากใช้เวลาร่วมกับคุณ"],
+["friend",73.7,"คำขอจากคนที่เคยรู้จัก","เพื่อนที่คุณเคยสนิทติดต่อมาขอความช่วยเหลือ"],
+["friendfollow",73.8,"ข่าวจากเพื่อนคนเดิม","คนที่เคยขอความช่วยเหลือกลับมาเล่าเรื่อง"],
+["intimacy",73.9,"ชีวิตคู่ในวันที่ความต้องการต่างกัน","คนรักอยากคุยเรื่องความใกล้ชิดและความสบายใจของทั้งสองฝ่าย"],
+["weekend",75.5,"ทริปที่ยังไม่ได้ตกลง","มีคำชวนไปเที่ยวช่วงวันหยุด คุณยังมีสิทธิเลือก"],
+["trip",75.6,"วันเดินทางที่เลือกเอง","หลังตกลงนัดกันไว้ ถึงวันเดินทางที่วางแผนไว้"],
+["pet",75.7,"อีกหนึ่งชีวิตที่ต้องดูแล","มีคนชวนรับเลี้ยงสัตว์ คุณจะประเมินความพร้อมอย่างไร"],
+["petfollow",75.8,"สมาชิกตัวเล็กในบ้าน","สัตว์ที่คุณรับเลี้ยงต้องการการดูแลต่อเนื่อง"],
+["memory",79.1,"เรื่องเล็กที่ผ่านมานานแล้ว","คนที่คุณเคยทำความรู้จักหรือครอบครัวนึกถึงเรื่องเก่า"]
+];
+for(let a=20;a<=99;a++)for(const [k,order,title,story] of templates)S.push({id:`crossx_${k}_${a}`,age:a,order,title,story,cw:"crossx",crossx:k,custom:true,choices:stub});
+W.allowed=(e,st,s)=>{
+ if(e.cw!=="crossx")return prev.allowed(e,st,s);
+ const a=e.age,t=s.stats;
+ switch(e.crossx){
+ case "collision":return working(st)&&!!schoolChild(st,a)&&!st.cxConflict&&t.career>=30&&due(s,"collision",a,6)&&a%3===0;
+ case "collisionfollow":return !!st.cxConflict&&a>st.cxConflictAge&&st.children?.some(x=>x.name===st.cxChild&&x.born===st.cxChildBorn)&&due(s,"collisionfollow",a,2);
+ case "burnout":return working(st)&&!st.cxHealth&&(t.stress>=65||t.energy<=30)&&due(s,"burnout",a,4);
+ case "recovery":return !!st.cxHealth&&a>st.cxHealthAge&&due(s,"recovery",a,2);
+ case "parent":return !!parentName(st)&&a%5===1&&due(s,"parent",a,5);
+ case "friend":return !!goodFriend(st)&&!st.cxFriend&&a%4===3&&due(s,"friend",a,6);
+ case "friendfollow":return !!st.cxFriend&&a>st.cxFriendAge&&P.privateOK(st,st.cxFriend)&&due(s,"friendfollow",a,2);
+ case "intimacy":return partner(st)&&a%5===2&&due(s,"intimacy",a,5);
+ case "weekend":return !st.cxTrip&&a%5===3&&due(s,"weekend",a,5);
+ case "trip":return !!st.cxTrip&&a>=st.cxTripAge&&(!st.cxTripPartner||partner(st)&&st.partnerName===st.cxTripPartner);
+ case "pet":return !st.cxPet&&a%8===4&&due(s,"pet",a,8);
+ case "petfollow":return !!st.cxPet&&a>st.cxPetAge&&a-st.cxPetAge<=15&&due(s,"petfollow",a,4);
+ case "memory":return !!memory(st,a)&&a%3===0&&due(s,"memory",a,5);
+ default:return false;
+ }};
+W.story=(e,st)=>{
+ if(e.cw!=="crossx")return prev.story(e,st);
+ switch(e.crossx){
+ case "collision":return "ในงาน"+job(st)+" มีงานเร่งที่ผู้เกี่ยวข้องต้องการให้คุณช่วย ขณะเดียวกัน "+schoolChild(st,e.age).name+" มีงานสำคัญที่โรงเรียนและขอให้คุณไป คุณยังไม่ได้ตกลงว่าจะทำสิ่งใด";
+ case "collisionfollow":return st.cxChild+" กลับมาพูดถึงวันที่งานชนกับงานโรงเรียนเมื่อคุณอายุ "+st.cxConflictAge+" ปี เขาจำได้ว่า"+(st.cxConflict==="work"?"คุณเลือกอยู่ทำงานและพลาดกิจกรรม":"คุณพยายามจัดเวลาให้เขา")+" และอยากให้คุณฟังความรู้สึก";
+ case "burnout":return "คุณมีภาระจากงาน"+job(st)+" ต่อเนื่อง ช่วงนี้พักไม่เต็มที่และมีความเหนื่อยสะสม คุณยังไม่ได้รับการวินิจฉัยโรค จะจัดการชีวิตอย่างไร";
+ case "recovery":return "หลังเลือกจัดการความเหนื่อยเมื่ออายุ "+st.cxHealthAge+" ปี คุณมีโอกาสทบทวนว่าการเปลี่ยนวิถีชีวิตที่ผ่านมาเป็นอย่างไร";
+ case "parent":return parentName(st)+" ชวนกินข้าวและอยากคุยเรื่องชีวิตที่ผ่านมา"+(working(st)?" แต่คุณยังมีภาระจากงาน":"")+" คุณจะใช้เวลาที่มีอย่างไร";
+ case "friend":return goodFriend(st)+" ที่คุณเคยเปิดใจรู้จัก ติดต่อมาบอกว่ามีปัญหาการเงินและอยากขอให้ช่วยคิดทางออก ไม่จำเป็นต้องให้เงิน";
+ case "friendfollow":return st.cxFriend+" ที่เคยติดต่อเมื่อคุณอายุ "+st.cxFriendAge+" ปี กลับมาเล่าความคืบหน้าเรื่องเงิน"+(st.cxFriendLoan?" และพูดถึงเงินที่ยืมคุณไว้":"")+" คุณอยากจัดการความสัมพันธ์อย่างไร";
+ case "intimacy":return st.partnerName+" อยากคุยเรื่องความใกล้ชิด ทั้งสองคนมีสิทธิแสดงความต้องการหรือปฏิเสธโดยไม่ถูกกดดัน คุณจะรับฟังและสื่อสารอย่างไร";
+ case "weekend":return (partner(st)?st.partnerName:"กลุ่มคนรู้จัก")+" ชวนเที่ยวช่วงวันหยุด ยังไม่ได้จองอะไร และแต่ละคนมีเวลาและงบต่างกัน";
+ case "trip":return "หลังเลือกไปเที่ยวในปีนี้ คุณ"+(st.cxTripPartner?"กับ "+st.cxTripPartner:"และกลุ่มคนรู้จัก")+" พบว่าฝนทำให้แผนเดิมต้องเปลี่ยน แต่ยังมีทางเลือกอื่น";
+ case "petfollow":return "สัตว์ที่คุณรับเลี้ยงเมื่ออายุ "+st.cxPetAge+" ปี ต้องการการดูแลตามวัยและมีค่าใช้จ่ายในเกม คุณจะจัดการอย่างไร";
+ case "memory":{const m=memory(st,e.age);return m.name+" กลับมาพูดถึงเรื่องเมื่อคุณอายุ "+m.age+" ปี — "+m.text+" ผ่านมาหลายปีแล้ว คุณอยากพูดอะไรกับเขา";}
+ default:return e.story;
+ }};
+W.choices=(e,st,s)=>{
+ if(e.cw!=="crossx")return prev.choices(e,st,s);
+ const a=e.age,t=s.stats;
+ switch(e.crossx){
+ case "collision":{const ch=schoolChild(st,a),set={cxChild:ch.name,cxChildBorn:ch.born,cxConflictAge:a};return [c("รับงานเต็มเวลาและแจ้งลูกว่าไปไม่ได้","งานเดินหน้า แต่ลูกผิดหวัง",{career:4,child:-5,stress:3},{...set,cxConflict:"work"}),c("เจรจาขอบเขตงานและจัดเวลาไปหาลูก","คุณพยายามรักษาทั้งสองหน้าที่",{problem:4,child:4,energy:-3},{...set,cxConflict:"family"}),c("ปฏิเสธงานเพิ่มและไปงานลูก","ลูกได้เห็นคุณ แต่โอกาสงานครั้งนี้ผ่านไป",{child:5,career:-1,h:3},{...set,cxConflict:"family"}),c("ขอผู้เกี่ยวข้องช่วยแบ่งงานและคุยกับลูก","ทุกฝ่ายรับรู้ข้อจำกัดของคุณ",{network:3,child:3,problem:3},{...set,cxConflict:"family"})];}
+ case "collisionfollow":return [c("ฟังและยอมรับว่าลูกมีความรู้สึกของตัวเอง","ลูกได้พูดในสิ่งที่ค้างใจ",{child:5,e:3},{cxConflict:""}),c("ชวนลูกทำสิ่งที่เขาสนใจ","ทั้งคู่สร้างความทรงจำใหม่",{child:4,h:3},{cxConflict:""}),c("บอกว่าหน้าที่สำคัญกว่า","ลูกยังมีความรู้สึกที่ไม่ได้รับการรับฟัง",{child:-4,stress:2}),c("อธิบายข้อจำกัดและวางแผนครั้งหน้า","ได้ข้อตกลงที่ชัดเจนขึ้น",{child:3,responsibility:3},{cxConflict:""})];
+ case "burnout":return [c("จัดเวลาพักและปรึกษาผู้เชี่ยวชาญตามความจำเป็น","เริ่มดูแลตัวเองและปรับภาระ",{energy:10,stress:-9,physical:3},{cxHealth:"care",cxHealthAge:a}),c("คุยกับผู้เกี่ยวข้องเพื่อปรับงาน","คุณลดแรงกดดันโดยยังไม่ลาออก",{energy:6,stress:-6,problem:3},{cxHealth:"care",cxHealthAge:a}),c("ฝืนทำงานต่อเหมือนเดิม","คุณยังรักษางานไว้ แต่ความล้าสะสม",{career:2,physical:-5,energy:-8,stress:8},{cxHealth:"ignore",cxHealthAge:a}),c("ลดงานเพิ่มเพื่อให้ชีวิตมีเวลาพัก","คุณให้ความสำคัญกับสุขภาพ",{h:4,energy:8,career:-1},{cxHealth:"care",cxHealthAge:a})];
+ case "recovery":return [c("รักษาการพักและปรับภาระต่อเนื่อง",st.cxHealth==="ignore"?"คุณเริ่มเปลี่ยนจากการฝืนตัวเอง":"คุณรักษาสมดุลที่เริ่มสร้าง",{physical:4,energy:8,stress:-7},{cxHealth:""}),c("ขอคำแนะนำและทบทวนแผน","คุณได้แนวทางดูแลตัวเองเพิ่ม",{knowledge:3,energy:5,stress:-4},{cxHealth:""}),c("กลับไปใช้ชีวิตหนักเหมือนเดิม","ความเหนื่อยอาจยังไม่ลด",{physical:-3,stress:6}),c("แบ่งเวลาให้ชีวิตนอกงาน","คุณมีพื้นที่ให้เรื่องอื่น",{h:5,energy:5},{cxHealth:""})];
+ case "parent":{const who=parentName(st),k=who==="แม่"?"mother":"father";return [c("ไปกินข้าวและฟังเรื่องที่ท่านอยากเล่า","ได้ใช้เวลาที่มีร่วมกัน",{[k]:5,h:3}),c("ชวนทำกิจกรรมที่ท่านชอบ","สร้างความทรงจำอีกครั้ง",{[k]:4,e:2}),c("โทรคุยและนัดวันอื่นตามกำลัง","คุณยังรักษาการติดต่อ",{[k]:2}),c("ขอเลื่อนและบอกเหตุผลตามตรง","คุณจัดลำดับภาระตามความพร้อม",{discipline:2})];}
+ case "friend":{const nm=goodFriend(st),set={cxFriend:nm,cxFriendAge:a};return [c("ฟังและช่วยวางแผนโดยไม่ให้เงิน","เพื่อนได้คนรับฟังและข้อมูลเพิ่ม",{friend:4,problem:3},{...set,cxFriendLoan:0}),t.m>=3000?c("ให้ยืม 3,000 บาทตามข้อตกลง","คุณช่วยตามกำลังและมีเรื่องต้องติดตาม",{m:-3000,friend:3},{...set,cxFriendLoan:3000}):c("เสนอช่วยหาทางเลือกที่ไม่ต้องใช้เงิน","คุณยังช่วยได้แม้เงินสดไม่พอ",{friend:3,problem:2},{...set,cxFriendLoan:0}),c("บอกว่าช่วยเรื่องนี้ไม่ไหว","คุณตั้งขอบเขตโดยไม่ตำหนิเพื่อน",{selfcontrol:3},{...set,cxFriendLoan:0}),c("ขอไม่ยุ่งเรื่องการเงินของเขา","คุณรักษาระยะเรื่องนี้",{selfcontrol:2})];}
+ case "friendfollow":{const l=st.cxFriendLoan||0;return [c(l?"คุยเรื่องกำหนดคืนเงิน":"รับฟังข่าวและให้กำลังใจ",l?"เพื่อนคืนเงินครึ่งหนึ่งและตกลงเรื่องที่เหลือในเกม":"เพื่อนได้เล่าข่าวชีวิตให้คุณฟัง",l?{m:Math.floor(l/2),friend:2}:{friend:4,h:2},{cxFriend:l>1?st.cxFriend:"",cxFriendLoan:Math.ceil(l/2),cxFriendAge:a}),c("ไม่เร่งและคุยตามความพร้อม","คุณเลือกให้ความสำคัญกับความสัมพันธ์",{friend:3,patience:2}),c("ขอปิดเรื่องนี้ตามขอบเขตที่ตกลง","คุณไม่อยากให้เรื่องเงินครอบงำความสัมพันธ์",{selfcontrol:3},{cxFriend:"",cxFriendLoan:0}),c("บอกว่าไม่อยากติดต่อแล้ว","คุณเว้นระยะและไม่ตามเรื่องส่วนตัวต่อ",{selfcontrol:3},{cxFriend:"",cxFriendLoan:0})];}
+ case "intimacy":return [c("ฟังความต้องการของกันและกันโดยไม่กดดัน","ทั้งคู่เข้าใจขอบเขตและความยินยอม",{partner:5,responsibility:3}),c("ชวนคุยเรื่องการป้องกันและสุขภาพทางเพศ","ทั้งคู่มีข้อมูลประกอบการตัดสินใจ",{knowledge:3,partner:3}),c("บอกว่าช่วงนี้ยังไม่พร้อมและนัดคุยใหม่","คุณสื่อสารความต้องการของตัวเอง",{selfcontrol:3,partner:1}),c("ใช้เวลาทำกิจกรรมที่ทั้งคู่สบายใจ","ความใกล้ชิดไม่จำเป็นต้องมีเพศสัมพันธ์เสมอไป",{h:4,partner:3})];
+ case "weekend":return [t.m>=1500?c("ตกลงไปและกันงบ 1,500 บาท","คุณตกลงแผนเดินทางในปีนี้",{m:-1500,h:3},{cxTrip:"yes",cxTripAge:a,cxTripPartner:partner(st)?st.partnerName:""}):c("เสนอเที่ยวใกล้บ้านที่ไม่เสียเงิน","คุณเสนอแผนที่เหมาะกับงบ",{h:3,friend:2}),c("ชวนทำกิจกรรมในพื้นที่แทน","ได้พบกันโดยไม่ต้องเดินทางไกล",{h:3,friend:2}),c("ขอเก็บเงินสำหรับเรื่องอื่น","คุณรักษาเป้าหมายการเงิน",{security:3}),c("ขอพักอยู่บ้าน","คุณได้เวลาส่วนตัว",{energy:5,h:2})];
+ case "trip":return [c("เปลี่ยนเป็นกิจกรรมในร่ม","ทุกคนได้สนุกแม้แผนเปลี่ยน",{h:5,experience:3},{cxTrip:""}),c("รอให้ฝนหยุดและคุยกัน","คุณให้ความสำคัญกับความปลอดภัย",{problem:3,friend:2},{cxTrip:""}),c("กลับบ้านก่อนตามความสะดวก","คุณตัดสินใจตามกำลัง",{energy:3},{cxTrip:""}),c("หารือแผนใหม่กับทุกคน","ได้ข้อตกลงร่วมกัน",{problem:4,social:2},{cxTrip:""})];
+ case "pet":return [t.m>=2000?c("รับเลี้ยงหลังเตรียมพื้นที่และงบ 2,000 บาท","คุณรับภาระดูแลสัตว์อย่างตั้งใจ",{m:-2000,h:4,responsibility:3},{cxPet:"yes",cxPetAge:a}):c("หาข้อมูลและรอจนพร้อม","คุณยังไม่รับเลี้ยง",{knowledge:3}),c("ช่วยหาบ้านที่เหมาะสมให้สัตว์","คุณช่วยโดยไม่รับภาระเกินกำลัง",{e:3,problem:2}),c("อาสาช่วยเป็นบางครั้ง","คุณได้ช่วยตามเวลาที่มี",{e:3,h:2}),c("ยังไม่พร้อมดูแลสัตว์","คุณไม่รับภาระที่ไม่เหมาะกับชีวิต",{selfcontrol:3})];
+ case "petfollow":return [t.m>=1000?c("จัดงบตรวจสุขภาพและดูแลตามวัย","สัตว์ได้รับการดูแลตามความพร้อม",{m:-1000,h:4,responsibility:3}):c("ขอคำแนะนำเรื่องการดูแลตามงบ","คุณหาทางดูแลอย่างรับผิดชอบ",{problem:3}),c("จัดเวลาเล่นและดูแลทุกวัน","คุณให้เวลาและความเอาใจใส่",{h:4,responsibility:3}),c("ขอคนที่ไว้ใจช่วยดูแลเมื่อไม่ว่าง","คุณจัดภาระให้เหมาะกับชีวิต",{problem:3,energy:2}),c("หาผู้รับเลี้ยงใหม่ที่เหมาะสม","คุณส่งต่อความรับผิดชอบโดยคำนึงถึงสวัสดิภาพสัตว์",{e:3,stress:2},{cxPet:""})];
+ case "memory":{const m=memory(st,a);return [c("ฟังเรื่องที่เขาจำได้และเล่าความรู้สึกของตัวเอง","ทั้งคู่ได้กลับมามองชีวิตที่ผ่านมา",{h:5,e:3},{cxRecall:m.id}),c("ขอบคุณที่ยังจำกันได้","คุณเห็นคุณค่าของช่วงเวลาที่ผ่านมา",{h:4,friend:3},{cxRecall:m.id}),c("ยอมรับว่าบางสิ่งในอดีตยังอยากแก้ไข","คุณรับฟังโดยไม่พยายามลบอดีต",{responsibility:4,e:3},{cxRecall:m.id}),c("ขอไม่ย้อนเรื่องเก่า","คุณเลือกขอบเขตการพูดคุยของตัวเอง",{selfcontrol:3},{cxRecall:m.id})];}
+ default:return e.choices;
+ }};
+W.after=(st,old,e,n,ch,item)=>{
+ prev.after(st,old,e,n,ch,item);
+ // Archive compact individual memories without changing existing person records.
+ const add=(kind,nm,text,born)=>{if(!nm)return;st.axMemories=[...(st.axMemories||[]),{id:item.id,kind,name:nm,text,born,age:item.age}];};
+ if(e.cw==="adultx"){
+  if(e.ax==="meet"&&n<2)add("contact",st.axContact,n===0?"คุณเลือกทำความรู้จักและแลกเปลี่ยนวิธีทำงาน":"คุณเลือกค่อยๆ ทำความรู้จักกัน");
+  if(e.ax==="pair")add("partner",st.axPartner,n===2?"คุณเลื่อนนัดที่เคยตกลงกัน":"คุณพยายามแบ่งเวลาให้ความสัมพันธ์");
+  if(e.ax==="child")add("child",st.axChildName,n===2?"คุณไม่ได้ไปร่วมงานที่โรงเรียน":"คุณพยายามหาเวลาและฟังความรู้สึกของลูก",st.axChildBorn);
+ }
+ if(e.cw==="crossx"){
+  if(e.crossx==="collision")add("child",st.cxChild,n===0?"งานชนกับวันสำคัญและคุณเลือกทำงาน":"คุณพยายามจัดเวลาระหว่างงานกับลูก",st.cxChildBorn);
+  if(e.crossx==="friendfollow"&&n===3&&old.cxFriend&&st.people[old.cxFriend])st.people[old.cxFriend]={...st.people[old.cxFriend],feeling:"เว้นระยะ",boundary:"ไม่ติดต่อ"};
+  if(e.crossx==="memory"&&st.cxRecall)st.axMemories=(st.axMemories||[]).map(m=>m.id===st.cxRecall?{...m,revisited:true}:m);
+ }
+ if(item.laterAction==="sellBiz"){st.axBizAge=undefined;st.axBizAsset=0;}
+ if(st.cxTripPartner&&(!partner(st)||st.partnerName!==st.cxTripPartner)){st.cxTrip="";st.cxTripPartner="";}
+ if(st.cxPet&&item.age-st.cxPetAge>15)st.cxPet="";
 };
 })(window);
