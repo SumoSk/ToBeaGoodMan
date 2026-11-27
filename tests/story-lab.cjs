@@ -11,3 +11,13 @@ const a=sample(),b=sample();assert.deepEqual(a,b,"seed is not reproducible");ass
 const lab=fs.readFileSync(path.join(root,"story-lab.html"),"utf8");for(const m of lab.matchAll(/<script>([\s\S]*?)<\/script>/g))new Function(m[1]);
 assert(lab.includes('src="index.html?storylab=1"'));assert(html.includes('window.location.href="story-lab.html"'));
 console.log("Story Lab: 25 decisions × 2, deterministic trace, zero player storage accesses, UI syntax passed.");
+
+const catalogWindow={};
+for(const tag of tags.slice(0,-1))new Function("window",tag[1]?fs.readFileSync(path.join(root,tag[1]),"utf8"):tag[2])(catalogWindow);
+new Function("window","document","localStorage","location","confirm",tags.at(-1)[2])(catalogWindow,document,storage,{search:"?storylab=1&storymap=1"},()=>true);
+assert(typeof catalogWindow.STORY_MAP_SOURCE==="function");const catalog=catalogWindow.STORY_MAP_SOURCE();
+assert(catalog.events.length>100);assert.equal(new Set(catalog.events.map(e=>e.id)).size,catalog.events.length);assert(catalog.events.every(e=>Array.isArray(e.choices)));assert(Object.keys(catalog.stats).length>10);
+const mapHtml=fs.readFileSync(path.join(root,"story-current-map.html"),"utf8"),mapJs=mapHtml.match(/<script>([\s\S]*?)<\/script>/)[1],mapEnv={};
+new Function("globalThis",mapJs)(mapEnv);const indexed=mapEnv.CURRENT_MAP_CORE.index(catalog);
+assert.equal([...indexed.groups.values()].reduce((n,v)=>n+v.length,0),catalog.events.length);assert.equal(indexed.map.size,catalog.events.length);assert(indexed.links.length>0);assert.deepEqual(storageCalls,[]);
+console.log("STORY_MAP_COUNTS "+JSON.stringify({events:catalog.events.length,choices:catalog.events.reduce((n,e)=>n+e.choices.length,0),groups:indexed.groups.size,subgroups:indexed.subgroups.size,stats:Object.keys(catalog.stats).length,links:indexed.links.length,unknown:indexed.unknown.length,careers:Object.keys(catalog.careers||{}).length,states:Object.keys(catalog.stateDefaults).length}));
