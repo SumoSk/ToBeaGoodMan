@@ -2131,3 +2131,62 @@ W.choices=(e,st,s)=>{if(e.cw!=="younglife")return prev.choices(e,st,s);const z=d
 W.after=(st,old,e,n,ch,item)=>{prev.after(st,old,e,n,ch,item);if(e.cw!=="younglife")return;const q=item.careerSet||ch.set||{};st.youngLife={...(old.youngLife||{}),[e.ylKey]:{step:q.youngStep??e.ylStage+1,route:q.youngRoute||"end"}};};
 w.YOUNG_LIFE={arcs};
 })(window);
+
+
+// Recurrence policy: gate repeated prompts on changes in life circumstances, not on generated IDs.
+(function(w){
+"use strict";
+const W=w.CAREER_WORLD, X=w.LIFE_FLEX, prev={allowed:W.allowed,after:W.after,story:W.story,choices:W.choices,flex:X.choiceFor};
+const paired=st=>["คบกัน","อยู่ด้วยกัน"].includes(st.relationship)&&!!st.partnerName;
+const work=st=>[st.profession||"",st.mode||"",st.lateWork||"",st.careerRank||0].join("|");
+const context=(e,st)=>{
+ if(e.flex==="jobshift")return ["jobshift",work(st)];
+ if(e.flex==="reconsider")return ["romanceFocus",String(st.partnerName||st.pastRomance||"")+"|"+(st.partnerSince??"")+"|"+(st.romanceOpen||"")];
+ if(e.flex==="court")return ["court",st.candidate||""];
+ if(e.cw==="adultx"&&e.ax==="social")return ["social",String(st.partnerSince??"")+"|"+(st.romanceOpen||"")];
+ if(e.cw==="crossx"&&e.crossx==="weekend")return ["weekend",paired(st)?st.partnerName:"เพื่อน"];
+ if(e.cw==="crossx"&&e.crossx==="parent")return ["parent",st.parentsLost?.mother?"father":"mother"];
+ if(e.cw==="crossx"&&e.crossx==="burnout")return ["burnout",work(st)];
+ if(e.personBoundary)return ["boundary",e.personBoundary];
+ return null;
+};
+const record=(e,st)=>{const c=context(e,st);return c?st.recurrenceHistory?.[c[0]]?.[c[1]]:null;};
+const rows=(s,kind)=>s.history.filter(x=>kind==="jobshift"?x.id.startsWith("flex_jobshift_"):kind==="reconsider"?x.id.startsWith("flex_reconsider_"):false);
+W.allowed=(e,st,s)=>{
+ const t=s.stats,a=e.age,old=record(e,st),ctx=context(e,st);
+ if(ctx&&old){const dt=a-old.age;switch(ctx[0]){
+ case "jobshift":{const requested=(st.qCareerRequest||0)>old.request;const stressed=t.security<35||t.stress>=75||t.energy<=25;const unemployed=!st.profession&&!["งานประจำ","งานประจำควบธุรกิจ","ธุรกิจ","อิสระ"].includes(st.mode);if(!requested&&(!stressed&&!unemployed||dt<8||old.count>=2&&!stressed))return false;break;}
+ case "romanceFocus":if(dt<10||old.count>=2)return false;break;
+ case "court":if(dt<3||old.count>=2)return false;break;
+ case "social":if(dt<9||old.count>=2&&st.yearFocus!=="love")return false;break;
+ case "weekend":if(dt<9||old.count>=2)return false;break;
+ case "parent":if(dt<9||old.count>=3)return false;break;
+ case "burnout":if(st.healthArc?.status||dt<6&&t.physical>=35)return false;break;
+ case "boundary":return false;
+ }}
+ if(e.cw==="crossx"&&["burnout","recovery"].includes(e.crossx)&&st.healthArc?.status)return false;
+ if(e.cw==="adultx"&&e.ax==="social"&&(st.candidate||st.romanceOpen==="ไม่"&&st.yearFocus!=="love"&&st.recurrenceHistory?.social&&Object.keys(st.recurrenceHistory.social).length))return false;
+ if(e.cw==="crossx"&&e.crossx==="intimacy"&&a>=18&&a<=49&&st.adultFamily?.lastAge!==undefined&&a-st.adultFamily.lastAge<5)return false;
+ return prev.allowed(e,st,s);
+};
+W.after=(st,old,e,n,ch,item)=>{
+ prev.after(st,old,e,n,ch,item);
+ const ctx=context(e,old);if(!ctx)return;
+ const [kind,key]=ctx,prevRow=old.recurrenceHistory?.[kind]?.[key];
+ st.recurrenceHistory={...(old.recurrenceHistory||{}),[kind]:{...(old.recurrenceHistory?.[kind]||{}),[key]:{age:item.age,count:(prevRow?.count||0)+1,n,request:old.qCareerRequest||0}}};
+};
+W.story=(e,st)=>{
+ const r=record(e,st);
+ if(r&&e.cw==="crossx"&&e.crossx==="weekend")return "ครั้งก่อนคุณเคยตัดสินใจเรื่องวันหยุดเมื่ออายุ "+r.age+" ปี คราวนี้"+(paired(st)?st.partnerName:"เพื่อนกลุ่มหนึ่ง")+" ชวนไปงานเทศกาลที่จัดเพียงปีละครั้ง แต่มีทั้งบัตรเข้าชมราคาแพง กิจกรรมฟรี และเวลาที่อาจชนกับธุระของคุณ";
+ if(r&&e.cw==="crossx"&&e.crossx==="parent")return "หลายปีหลังจากที่คุณเคยคุยกับคนในบ้าน ผู้ใหญ่ที่ยังอยู่ชวนเปิดอัลบั้มเก่า มีภาพที่คุณไม่เคยเห็นและเรื่องราวสมัยก่อนที่อยากเล่าให้ฟัง คุณมีเวลาเพียงช่วงหนึ่งก่อนกลับไปจัดการธุระของตัวเอง";
+ return prev.story(e,st);
+};
+W.choices=(e,st,s)=>{
+ const b=prev.choices(e,st,s),r=record(e,st);
+ if(!r||e.cw!=="crossx")return b;
+ if(e.crossx==="weekend"){const texts=[["จองบัตรงานเทศกาลและไปด้วยกัน","คุณได้ประสบการณ์จากงานที่รอคอยและมีความทรงจำใหม่"],["เลือกกิจกรรมฟรีในงานแล้วชวนกันไป","คุณได้สนุกกับเทศกาลโดยไม่ต้องซื้อตั๋วราคาแพง"],["ไม่จองบัตรและเก็บเงินไว้ตามเป้าหมาย","คุณรักษางบ แม้อาจพลาดงานประจำปี"],["ขอใช้วันหยุดพักร่างกายแทน","คุณได้พักและไม่รับนัดเพิ่ม"]];return b.map((q,i)=>({...q,label:i===0&&s.stats.m<1500?q.label:texts[i]?.[0]||q.label,result:i===0&&s.stats.m<1500?q.result:texts[i]?.[1]||q.result}));}
+ if(e.crossx==="parent"){const texts=[["นั่งดูอัลบั้มและฟังเรื่องของครอบครัว","คุณได้รู้เรื่องในอดีตที่ไม่เคยได้ฟังมาก่อน"],["ขออนุญาตบันทึกเรื่องเล่าหรือสำเนาภาพที่สำคัญ","ครอบครัวได้เก็บความทรงจำที่ผู้ใหญ่เต็มใจแบ่งปัน"],["โทรคุยและขอนัดวันเปิดอัลบั้มด้วยกัน","คุณรักษาการติดต่อโดยไม่เร่งให้ต้องพบวันนี้"],["บอกตรงๆ ว่ายังมีภาระและขอเลื่อน","ผู้ใหญ่รับรู้เหตุผล แต่เรื่องเล่ายังต้องรอ"]];return b.map((q,i)=>({...q,label:texts[i]?.[0]||q.label,result:texts[i]?.[1]||q.result}));}
+ return b;
+};
+w.LIFE_RECURRENCE={context,record};
+})(window);
