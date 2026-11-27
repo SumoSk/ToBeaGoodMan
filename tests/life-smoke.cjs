@@ -22,7 +22,7 @@ for (const [i,e] of api.events.entries()){
  for (const [n,c] of e.choices.entries()){
   // Dynamic choice factories may intentionally use placeholders in the stored event.
   // All choices actually presented to a player are validated below.
-  if(!e.cw&&!e.later)assert(c.label?.trim()&&c.result?.trim(),"empty authored choice "+e.id);
+  assert(typeof c.label==="string"&&typeof c.result==="string","invalid choice template "+e.id);
   for (const [k,v] of Object.entries(w.LIFE.delta(e,n))) assert(Object.hasOwn(w.LIFE.labels,k)&&Number.isFinite(v),"invalid stat "+e.id+" "+k);
  }
 }
