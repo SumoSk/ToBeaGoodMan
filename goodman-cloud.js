@@ -5,7 +5,7 @@
 if(typeof document==="undefined")return;
 if(new URLSearchParams(location.search).get("storylab")==="1")document.documentElement.setAttribute("data-studio-lock","");
 const URL="https://jeqbyhzbpivscsduwkcj.supabase.co", KEY="sb_publishable_yEaGo1wDqb4qehdi702eMQ_ZqyVcHuf";
-const prefix="goodman.cloud.session.v1.", emailKey="goodman.dev.email.v1";
+const prefix="goodman.cloud.session.v1.";
 const get=scope=>{try{return JSON.parse(sessionStorage.getItem(prefix+scope)||"null")}catch(_){return null}};
 function set(scope,s){if(s)sessionStorage.setItem(prefix+scope,JSON.stringify(s));else sessionStorage.removeItem(prefix+scope)}
 function err(data,res){return new Error(data?.message||data?.msg||data?.error_description||data?.error||("HTTP "+res.status))}
@@ -42,7 +42,15 @@ async function api(scope,path,opt={}){
  const s=await session(scope);if(!s)throw Error("กรุณาเข้าสู่ระบบใหม่");
  return request("/rest/v1/"+path,{...opt,token:s.access_token});
 }
-async function isAdmin(){try{return (await api("dev","studio_admins?select=user_id&limit=1")).length===1}catch(_){return false}}
+const adminKey="life-story-studio.admin.session.v1";
+function readAdmin(){try{return JSON.parse(sessionStorage.getItem(adminKey)||"null")}catch(_){return null}}
+function setAdmin(value){if(value)sessionStorage.setItem(adminKey,JSON.stringify(value));else sessionStorage.removeItem(adminKey)}
+async function adminApi(action,data={}){
+ const s=readAdmin();if(!s?.token||new Date(s.expires_at).getTime()<=Date.now()){setAdmin(null);throw Error("กรุณาเข้าสู่ระบบ ADMIN ใหม่")}
+ return request("/functions/v1/life-story-studio-admin",{method:"POST",data:{action,token:s.token,data}});
+}
+async function isAdmin(){try{return (await adminApi("status")).role==="ADMIN"}catch(_){return false}}
+async function logoutAdmin(){try{await adminApi("logout")}finally{setAdmin(null)}}
 async function signOut(scope){const s=get(scope);set(scope,null);if(s?.access_token)try{await request("/auth/v1/logout?scope=local",{method:"POST",token:s.access_token})}catch(_){}}
 function node(tag,txt){const e=document.createElement(tag);if(txt!==undefined)e.textContent=txt;return e}
 function modal(title){
@@ -55,29 +63,54 @@ function modal(title){
 function action(parent,label,fn,m){const b=node("button",label);b.type="button";b.onclick=async()=>{b.disabled=true;if(m)m.msg.textContent="";try{await fn()}catch(e){if(m)m.msg.textContent=e.message||"ทำรายการไม่ได้";else alert(e.message)}finally{b.disabled=false}};parent.append(b);return b}
 function field(parent,label,type,value=""){const l=node("label",label),i=node("input");i.type=type;i.value=value;i.required=true;i.autocomplete=type==="password"?"current-password":"email";l.append(i);parent.append(l);return i}
 function loginDialog(scope,done){
- const m=modal(scope==="dev"?"ทางเข้าผู้พัฒนา":"บัญชีผู้เล่น");
- let remembered="";if(scope==="dev")try{remembered=localStorage.getItem(emailKey)||""}catch(_){}
+ const m=modal("บัญชีผู้เล่น TO BE A GOOD MAN.");
  const form=node("form");m.body.append(form);
- const email=field(form,"อีเมล","email",remembered),pw=field(form,"รหัสผ่าน","password");
- if(remembered){email.parentElement.hidden=true;action(form,"เปลี่ยนอีเมล",()=>{email.parentElement.hidden=false;email.focus()},m)}
+ const email=field(form,"อีเมล","email"),pw=field(form,"รหัสผ่าน","password");
  const submit=node("button","เข้าสู่ระบบ");submit.type="submit";form.append(submit);
  async function login(signup){if(!form.reportValidity())return;submit.disabled=true;m.msg.textContent="";try{
-  const ok=await signIn(scope,email.value.trim(),pw.value,signup);pw.value="";
+  const ok=await signIn("player",email.value.trim(),pw.value,signup);pw.value="";
   if(!ok){m.msg.textContent="ตรวจสอบอีเมลยืนยันบัญชี แล้วกลับมาเข้าสู่ระบบ";return}
-  if(scope==="dev"&&!(await isAdmin())){await signOut(scope);throw Error("บัญชีนี้ยังไม่มีสิทธิ์ผู้พัฒนา Life Story Studio")}
-  if(scope==="dev")try{localStorage.setItem(emailKey,email.value.trim())}catch(_){}
   m.d.close();await done();
  }catch(e){m.msg.textContent=e.message||"เข้าสู่ระบบไม่ได้"}finally{submit.disabled=false}}
  form.onsubmit=e=>{e.preventDefault();login(false)};
- if(scope==="player")action(form,"สมัครบัญชี",()=>login(true),m);
- requestAnimationFrame(()=>{if(remembered)pw.focus();else email.focus()});
+ action(form,"สมัครบัญชี",()=>login(true),m);
+ requestAnimationFrame(()=>email.focus());
+}
+function pinDialog(done){
+ const m=modal("ADMIN");m.d.classList.add("gc-pin");
+ const sub=node("p","TO BE A GOOD MAN.");sub.className="gc-pin-brand";
+ const hint=node("p","กรอก PIN 6 หลัก");hint.className="gc-pin-hint";
+ const dots=node("div");dots.className="gc-pin-dots";dots.setAttribute("aria-label","จำนวนหลัก PIN");
+ const pad=node("div");pad.className="gc-keypad";
+ m.body.append(sub,hint,dots,pad);
+ let digits="",busy=false;
+ const controls=[];
+ function display(){dots.replaceChildren();for(let i=0;i<6;i++){const d=node("span");d.className=i<digits.length?"filled":"";dots.append(d)}dots.setAttribute("aria-label","กรอกแล้ว "+digits.length+" จาก 6 หลัก")}
+ async function submit(){
+  if(busy||digits.length!==6)return;busy=true;controls.forEach(x=>x.disabled=true);m.msg.textContent="กำลังตรวจสอบ";
+  try{
+   const r=await request("/functions/v1/life-story-studio-admin",{method:"POST",data:{action:"login",pin:digits}});
+   if(!r?.ok||r.role!=="ADMIN"||!r.token)throw Error("รหัส PIN ไม่ถูกต้อง");
+   setAdmin({token:r.token,expires_at:r.expires_at});digits="";display();m.d.close();await done();
+  }catch(e){digits="";display();m.msg.textContent=e.message?.includes("Too many")?"กรอกผิดหลายครั้ง กรุณาลองอีกครั้งใน 15 นาที":"รหัส PIN ไม่ถูกต้อง หรือยังไม่ได้ตั้งค่า ADMIN"}
+  finally{busy=false;controls.forEach(x=>x.disabled=false)}
+ }
+ function digit(n){if(busy||digits.length>=6)return;m.msg.textContent="";digits+=n;display();if(digits.length===6)submit()}
+ function clear(){if(!busy){digits="";display();m.msg.textContent=""}}
+ function erase(){if(!busy){digits=digits.slice(0,-1);display();m.msg.textContent=""}}
+ for(const n of ["1","2","3","4","5","6","7","8","9","ล้าง","0","⌫"]){
+  const b=node("button",n);b.type="button";if(n==="ล้าง"||n==="⌫")b.className="gc-pin-secondary";if(n==="⌫")b.setAttribute("aria-label","ลบตัวเลขล่าสุด");
+  b.onclick=()=>n==="ล้าง"?clear():n==="⌫"?erase():digit(n);controls.push(b);pad.append(b)
+ }
+ m.d.addEventListener("keydown",e=>{if(/^[0-9]$/.test(e.key)){e.preventDefault();digit(e.key)}else if(e.key==="Backspace"){e.preventDefault();erase()}});
+ m.close.textContent="กลับหน้าเกม";display();
 }
 async function developer(){
- if(!(await isAdmin())){loginDialog("dev",developer);return}
- const m=modal("Developer Mode");
+ if(!(await isAdmin())){pinDialog(developer);return}
+ const m=modal("ADMIN");m.body.append(node("p","TO BE A GOOD MAN."));
  action(m.body,"ทดสอบเกม",()=>{root.location.href="story-lab.html"},m);
  action(m.body,"Life Story Studio",()=>{root.location.href="story-map.html"},m);
- action(m.body,"ออกจากระบบผู้พัฒนา",async()=>{await signOut("dev");m.d.close()},m);
+ action(m.body,"ออกจากระบบผู้พัฒนา",async()=>{await logoutAdmin();m.d.close()},m);
 }
 async function guard(){
  const path=location.pathname.split("/").pop(), lab=new URLSearchParams(location.search).get("storylab")==="1";
@@ -86,7 +119,9 @@ async function guard(){
   if(window.parent!==window){document.body.replaceChildren(node("p","ต้องเข้าสู่ระบบผู้พัฒนา"));document.documentElement.removeAttribute("data-studio-lock");return}
   location.replace("index.html");return;
  }
- const brand=document.querySelector(".brand");if(brand){brand.setAttribute("role","button");brand.tabIndex=0;brand.addEventListener("click",()=>developer().catch(e=>alert(e.message)));brand.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();brand.click()}})}
+ document.addEventListener("click",e=>{if(e.target.closest?.(".brand,.gc-home-title"))developer().catch(err=>alert(err.message))});
+ document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.closest?.(".brand,.gc-home-title")){e.preventDefault();developer().catch(err=>alert(err.message))}});
+ const brand=document.querySelector(".brand");if(brand){brand.setAttribute("role","button");brand.tabIndex=0;}
 }
 async function player(getSave,applySave){
  if(!(await session("player"))){loginDialog("player",()=>player(getSave,applySave));return}
@@ -115,11 +150,11 @@ async function player(getSave,applySave){
  try{await draw()}catch(e){m.msg.textContent=e.message}
 }
 const studio={
- async list(){return api("dev","studio_projects?select=project_id,title,revision,updated_at&order=updated_at.desc")},
- async read(id){const r=await api("dev","studio_projects?project_id=eq."+encodeURIComponent(id)+"&select=project_id,title,revision,schema_version,payload");if(!r.length)throw Error("ไม่พบโปรเจกต์");return r[0]},
- async history(id){return api("dev","studio_revisions?project_id=eq."+encodeURIComponent(id)+"&select=revision,created_at&order=revision.desc&limit=30")},
- async revision(id,rev){const r=await api("dev","studio_revisions?project_id=eq."+encodeURIComponent(id)+"&revision=eq."+encodeURIComponent(rev)+"&select=payload");if(!r.length)throw Error("ไม่พบเวอร์ชัน");return r[0].payload},
- async save(id,rev,title,payload){return api("dev","rpc/studio_save_project",{method:"POST",data:{p_project_id:id,p_expected_revision:rev,p_title:title,p_schema_version:1,p_payload:payload}})}
+ async list(){return adminApi("list")},
+ async read(id){const r=await adminApi("read",{id});if(!r)throw Error("ไม่พบโปรเจกต์");return r},
+ async history(id){return adminApi("history",{id})},
+ async revision(id,revision){const r=await adminApi("revision",{id,revision});if(!r)throw Error("ไม่พบเวอร์ชัน");return r},
+ async save(id,revision,title,payload){return adminApi("save",{id,revision,title,payload})}
 };
 root.GoodmanCloud={developer,player,studio,isAdmin,modal,action,node};
 document.addEventListener("DOMContentLoaded",()=>guard().catch(()=>{if(document.documentElement.hasAttribute("data-studio-lock"))location.replace("index.html")}));
