@@ -9,7 +9,7 @@ const api=w.STORY_LAB;assert(api,"missing lab bridge");const o=api.origins();con
 function sample(){api.start(origin,8123,true);const trace=[];for(let i=0;i<25;i++){const scene=api.current();assert(scene&&scene.choices.length);assert(scene.title&&scene.story);const out=api.pick(0);assert.equal(out.result,scene.choices[0].result);assert(out.after.stats&&scene.before.stats);trace.push([scene.id,scene.age,scene.title,scene.story,out.result]);}return trace;}
 const a=sample(),b=sample();assert.deepEqual(a,b,"seed is not reproducible");assert.deepEqual(storageCalls,[],"lab accessed player storage");
 const lab=fs.readFileSync(path.join(root,"story-lab.html"),"utf8");for(const m of lab.matchAll(/<script>([\s\S]*?)<\/script>/g))new Function(m[1]);
-assert(lab.includes('src="index.html?storylab=1"'));assert(html.includes('window.location.href="story-lab.html"'));
+assert(lab.includes('src="index.html?storylab=1"'));assert(!html.includes('btn("ระบบทดลอง · Story Quality Lab"'));assert(html.includes('goodman-cloud.js'));const cloud=fs.readFileSync(path.join(root,"goodman-cloud.js"),"utf8");new Function("window",cloud);assert(cloud.includes('studio_admins?select=user_id'));assert(cloud.includes('story-lab.html'));
 console.log("Story Lab: 25 decisions × 2, deterministic trace, zero player storage accesses, UI syntax passed.");
 
 const catalogWindow={};

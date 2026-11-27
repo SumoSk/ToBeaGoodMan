@@ -1,8 +1,8 @@
 name: Life simulation checks
 on:
   push:
-    branches: [main]
-    paths: ['*.js', 'index.html', 'story-lab.html', 'tests/**', '.github/workflows/life-check.yml']
+    branches: [main, goodman-studio-cloud-foundation]
+    paths: ['*.js', 'index.html', 'story-lab.html', 'story-map.html', 'story-current-map.html', 'tests/**', '.github/workflows/life-check.yml']
   workflow_dispatch:
 permissions:
   contents: read
