@@ -1671,3 +1671,207 @@ W.allowed=(e,st,s)=>e.cw==="songfuture"?st.vySongDating===true&&st.partnerName==
 W.choices=(e,st,s)=>e.cw==="songfuture"?e.choices:choices(e,st,s);
 W.story=(e,st)=>e.cw==="songfuture"?e.story:story(e,st);
 })(window);
+
+
+// Context-aware scene quality, repeat protection and authored skill options.
+(function qualityLife(w){
+"use strict";
+const W=w.CAREER_WORLD,F=w.LIFE_FREEDOM,M=w.LIFE_MERGED,L=w.LIFE_LATER;
+const previous={allowed:W.allowed,after:W.after,story:W.story,choices:W.choices,specials:F.specials,mergedStory:M.story};
+const jobKey=st=>[st.profession||st.mode||"none",st.professionSince??-1,st.careerHistory?.at(-1)?.age??-1].join("@");
+const partnerKey=st=>(st.partnerName||"single")+"@"+(st.partnerSince??-1);
+const childId=x=>x?x.name+"@"+x.born:"none";
+const adults=(st,a)=>st.children?.filter(x=>a-x.born>=20)||[];
+const chooseChild=(st,a,fn=()=>true)=>{const v=adults(st,a).filter(fn);return v.length?v[a%v.length]:null};
+const childSchool=(st,a)=>{const v=st.children?.filter(x=>a-x.born>=5&&a-x.born<=18)||[];return v.length?v[a%v.length]:null};
+const scope=(type,...v)=>[type,...v].join("|");
+const num=(st,k)=>st.qSeen?.[k]||0;
+const job=st=>W.by[st.profession]?.name||st.mode||"งาน";
+const q=(label,result,delta={},set={})=>({label,result,delta,set});
+function key(e,st){
+ const a=e.age,j=jobKey(st),p=partnerKey(st);
+ if(e.cw==="case")return scope("career-case",e.cwProfession);
+ if(e.cw==="follow")return scope("career-follow",e.cwProfession,st.careerCaseAge);
+ if(e.cw==="explore")return scope("career-explore",j);
+ if(e.cw==="home"||e.cw==="family")return scope("career-"+e.cw,p,st.qBalanceAge??st.careerCaseAge??st.detailAge??-1);
+ if(e.cw==="friend")return scope("career-friend",j,st.qFriendAge??st.careerCaseAge??st.detailAge??-1);
+ if(e.cw==="money")return scope("training-money",st.careerPlan,st.trainingAge);
+ if(e.cw==="adultx"){
+  switch(e.ax){
+   case "ordinary":case "lost":case "wealth":return scope("adult",e.ax);
+   case "meet":case "task":case "progress":case "ethics":return scope("adult",e.ax,j);
+   case "result":return scope("adult-result",j,st.axTaskAge);
+   case "ethicsfollow":return scope("adult-ethicsfollow",j,st.axEthicsAge);
+   case "reunion":return scope("adult-reunion",st.axContact,st.axStart);
+   case "pair":return scope("adult-pair",p);
+   case "pairfollow":return scope("adult-pairfollow",p,st.axPairAge);
+   case "child":return scope("adult-child",childId(childSchool(st,a)));
+   case "childfollow":return scope("adult-childfollow",st.axChildName,st.axChildBorn,st.axChildAge);
+   case "biz":return scope("adult-biz",st.axBizAge??-1);
+   case "bizfollow":return scope("adult-bizfollow",st.axBizAge,st.lateBusiness);
+   case "bizcrisis":return scope("adult-bizcrisis",st.axBizAge,st.lateBusiness);
+   default:return "";
+  }
+ }
+ if(e.cw==="crossx"){
+  switch(e.crossx){
+   case "collision":return scope("cross-collision",j,childId(childSchool(st,a)));
+   case "collisionfollow":return scope("cross-collisionfollow",st.cxChild,st.cxChildBorn,st.cxConflictAge);
+   case "parent":return scope("cross-parent",st.parentsLost?.mother?"father":"mother");
+   case "friend":return scope("cross-friend",st.cxFriend||Object.keys(st.people||{}).find(n=>n!==st.partnerName&&w.PEOPLE.privateOK(st,n)&&st.people[n].feeling==="รู้สึกดี")||"none");
+   case "friendfollow":return scope("cross-friendfollow",st.cxFriend,st.cxFriendAge);
+   case "intimacy":return scope("cross-intimacy",p);
+   case "weekend":return scope("cross-weekend",p);
+   case "petfollow":return scope("cross-petfollow",st.cxPetAge);
+   default:return "";
+  }
+ }
+ if(e.cw==="elderx"){
+  switch(e.elderx){
+   case "childvisit":return scope("elder-childvisit",childId(chooseChild(st,a)));
+   case "childfollow":return scope("elder-childfollow",st.elChildTarget,st.elChildAge);
+   case "grand":return scope("elder-grand",childId(chooseChild(st,a,x=>x.grand&&a-(x.firstGrand??a)>=6)));
+   case "estate":return scope("elder-estate",childId(chooseChild(st,a)));
+   case "estatefollow":return scope("elder-estatefollow",st.elEstateTarget,st.elEstateAge);
+   case "carefollow":return scope("elder-carefollow",st.elCareAge,st.elCare);
+   case "healthfollow":return scope("elder-healthfollow",st.elHealthAge);
+   case "luxury":case "autonomy":case "legacy":return scope("elder",e.elderx);
+   case "mentor":return scope("elder-mentor",j);
+   case "friend":return scope("elder-friend",Object.keys(st.people||{}).filter(n=>n!==st.partnerName&&w.PEOPLE.privateOK(st,n)&&st.people[n].feeling==="รู้สึกดี").sort().join(","));
+   default:return "";
+  }
+ }
+ if(e.later){
+  switch(e.later){
+   case "project":case "leadteam":return scope("later",e.later,j,st.careerRank||0);
+   case "workchoice":return scope("later-workchoice",j,st.lateWork||"working");
+   case "bizgrowth":case "bizfix":return scope("later",e.later,st.axBizAge??-1,st.lateBusiness);
+   case "luxury":case "community":case "clubdrama":case "clubtrip":case "communityaward":case "scamold":case "travelbig":case "wealthheirs":return scope("later",e.later);
+   case "childdebt":case "childsuccess":{const v=adults(st,a);return scope("later",e.later,childId(v[a%Math.max(1,v.length)]));}
+   case "grandstudy":return scope("later-grandstudy",childId(adults(st,a).find(x=>x.grand&&a-(x.firstGrand??a)>=6)));
+   default:return "";
+  }
+ }
+ if(e.merge){
+  switch(e.merge){
+   case "hobbyMenu":return scope("hobby-menu",st.hobbyId||"none");
+   case "hobbyPractice":return scope("hobby-practice",st.hobbyId,st.hobbyStart);
+   case "hobbyTogether":return scope("hobby-together",st.hobbyId,p);
+   case "hobbyCareer":return scope("hobby-career",st.hobbyId);
+   case "partnerWork":case "partnerFuture":return scope("partner",e.merge,p,st.partnerJob);
+   default:return "";
+  }
+ }
+ if(e.flex==="reconsider")return scope("reconsider",st.pastRomance||"",st.partnerSince??-1,st.romanceOpen||"");
+ if(e.flex==="marry")return scope("marry",p);
+ if(e.polish==="family_decision")return scope("family-decision",p);
+ return "";
+}
+function cap(e){
+ if(e.cw==="adultx"&&e.ax==="task")return 3;
+ if(e.cw==="follow"||e.cw==="money"||e.cw==="adultx"&&e.ax==="result"||e.merge==="hobbyPractice")return 2;
+ return 1;
+}
+W.allowed=(e,st,s)=>{
+ const k=key(e,st);
+ if(k&&num(st,k)>=cap(e))return false;
+ return previous.allowed(e,st,s);
+};
+W.after=(st,old,e,n,ch,item)=>{
+ previous.after(st,old,e,n,ch,item);
+ const k=item.sceneKey||key(e,old);
+ if(k)st.qSeen={...(st.qSeen||{}),[k]:num(old,k)+1};
+ if(st.careerBalance&&!old.careerBalance)st.qBalanceAge=item.age;
+ if(st.careerFriend&&!old.careerFriend)st.qFriendAge=item.age;
+};
+const taskStories=[
+ "ผู้เกี่ยวข้องส่งงานตัวอย่างมาให้ตรวจและแจ้งว่าต้องส่งตามเวลาที่ตกลงไว้ คุณพบว่าข้อมูลบางส่วนไม่ครบ ต้องตัดสินใจว่าจะขอข้อมูลหรือทำเท่าที่มี",
+ "ก่อนส่งมอบงานรอบใหม่ ผู้เกี่ยวข้องเปลี่ยนรายละเอียดหลังตกลงกันไปแล้ว คุณต้องจัดการขอบเขตงานและแจ้งผลกระทบโดยไม่เสียคุณภาพ"
+];
+W.story=(e,st)=>{
+ const k=key(e,st),n=num(st,k);
+ if(e.cw==="adultx"&&e.ax==="task"&&n>0)return "ในบทบาท"+job(st)+" "+taskStories[Math.min(n-1,1)];
+ if(e.cw==="adultx"&&e.ax==="result"&&n>0)return "หลังยังไม่ได้จัดการข้อเสนอแนะจากงานที่เริ่มเมื่ออายุ "+st.axTaskAge+" ปี ผู้เกี่ยวข้องขอข้อสรุปเป็นลายลักษณ์อักษรและกำหนดวันปิดงาน คุณต้องจัดการเรื่องที่ยังค้างให้ชัดเจน";
+ if(e.cw==="follow"&&n>0)return "เรื่องจากงาน"+job(st)+" เมื่ออายุ "+st.careerCaseAge+" ปี ยังไม่ได้ข้อยุติ ผู้เกี่ยวข้องขอข้อสรุปและแจ้งว่าต้องส่งเรื่องต่อผู้รับผิดชอบหากไม่มีคำตอบ";
+ if(e.cw==="money"&&n>0)return "ระหว่างเตรียมอาชีพ"+(W.by[st.careerPlan]?.name||"ที่เลือก")+" คุณต้องตัดสินใจว่าจะจัดค่าเดินทางและอุปกรณ์ฝึกที่ต้องใช้ในระยะที่เหลืออย่างไร";
+ return previous.story(e,st);
+};
+W.choices=(e,st,s)=>{
+ const base=previous.choices(e,st,s),k=key(e,st),n=num(st,k),a=e.age;
+ if(e.cw==="adultx"&&e.ax==="task"&&n>0){
+  const b={axTaskAge:a};
+  return n===1?[
+   q("ขอข้อมูลที่ขาดและตรวจความถูกต้องก่อนเริ่ม","ผู้เกี่ยวข้องส่งรายละเอียดเพิ่มและคุณรับงานตามข้อมูลจริง",{problem:4,skill:3,reliable:3},{...b,axTask:"care"}),
+   q("ตกลงส่งเฉพาะส่วนที่มีข้อมูลครบก่อน","ขอบเขตชัดขึ้นและผู้เกี่ยวข้องรู้สิ่งที่ต้องรอ",{network:3,problem:3},{...b,axTask:"scope"}),
+   q("เดาข้อมูลที่ขาดเพื่อส่งให้ทัน","งานส่งเร็วแต่มีจุดที่อาจผิดพลาด",{career:2,i:-3,reliable:-3},{...b,axTask:"rush"}),
+   q("ขอปฏิเสธงานที่ข้อมูลไม่พอ","คุณไม่รับภาระโดยขาดข้อเท็จจริง",{selfcontrol:3,energy:2})
+  ]:[
+   q("ประเมินผลกระทบและตกลงกำหนดส่งใหม่","ผู้เกี่ยวข้องรับทราบเวลาและคุณตรวจงานได้ครบ",{problem:4,reliable:4},{...b,axTask:"care"}),
+   q("แยกงานเพิ่มออกจากข้อตกลงเดิม","คุณจัดขอบเขตชัดเจนก่อนรับงานเพิ่ม",{career:3,confidence:3},{...b,axTask:"scope"}),
+   q("รับทุกอย่างโดยไม่ปรับเวลา","คุณมีภาระมากขึ้นและคุณภาพเสี่ยงลดลง",{stress:5,energy:-4},{...b,axTask:"rush"}),
+   q("ส่งมอบเฉพาะงานที่ตกลงไว้และไม่รับงานเพิ่ม","คุณรักษาคำพูดโดยไม่รับภาระใหม่",{reliable:3,energy:2})
+  ];
+ }
+ if(e.cw==="adultx"&&e.ax==="result"&&n>0)return [
+  q("ส่งรายการแก้ไขที่ทำได้พร้อมหลักฐาน","ผู้เกี่ยวข้องรับทราบสิ่งที่แก้และปิดรอบงานนี้",{responsibility:4,reliable:3,skill:2},{axTask:""}),
+  q("ขอผู้รับผิดชอบร่วมตรวจงานและตกลงสิ่งที่ยังค้าง","เรื่องถูกส่งต่ออย่างชัดเจนและคุณรับผิดชอบส่วนของตัวเอง",{network:3,problem:4},{axTask:""}),
+  q("ไม่ตอบและปล่อยให้เรื่องถูกส่งต่อ","งานรอบนี้จบโดยมีข้อร้องเรียนค้างและความเชื่อมั่นลดลง",{reliable:-6,career:-2,stress:4},{axTask:"",careerBalance:"ค้าง",careerFriend:"ค้าง"}),
+  q("ชี้แจงข้อจำกัดและยุติภาระงานเพิ่ม","คุณปิดงานในส่วนที่รับผิดชอบโดยไม่รับงานใหม่",{selfcontrol:3,energy:3},{axTask:""})
+ ];
+ if(e.cw==="follow"&&n>0)return [
+  q("ส่งข้อสรุปและเอกสารให้ผู้รับผิดชอบตรวจ","คุณรับผิดชอบเรื่องค้างและปิดรอบการติดตาม",{responsibility:4,reliable:4,problem:3},{careerCase:""}),
+  q("ขอคนกลางจัดการข้อพิพาทที่ยังตกลงไม่ได้","เรื่องถูกส่งให้ผู้เกี่ยวข้องดำเนินต่อโดยไม่ต้องคุยเรื่องเดิมทุกปี",{fair:3,network:3},{careerCase:""}),
+  q("ไม่ตอบจนผู้เกี่ยวข้องส่งเรื่องต่อ","คุณเสียความเชื่อมั่นและผลจากงานยังตามมากระทบชีวิต",{career:-4,reliable:-5,stress:4},{careerCase:"",careerBalance:"ค้าง",careerFriend:"ค้าง"}),
+  q("ออกจากงานและส่งมอบข้อมูลที่ยังค้าง","คุณยุติบทบาทงานนี้และต้องตั้งหลักใหม่",{career:-3,experience:4},{careerCase:"",mode:"พักที่บ้าน",goal:"หางานใหม่"})
+ ];
+ if(e.cw==="money"&&n>0)return [
+  q("ขอข้อมูลทุนหรือยืมอุปกรณ์จากสถานฝึก","คุณลดค่าใช้จ่ายโดยยังฝึกต่อได้",{problem:4,security:3}),
+  q("รับงานเสริมช่วงที่ไม่ชนการฝึก","คุณได้รายได้จากงานเสริมตามกำลัง",{m:1200,skill:2,energy:-3}),
+  s.stats.m>=1500?q("กันเงิน 1,500 บาทไว้สำหรับอุปกรณ์","คุณมีอุปกรณ์ฝึกตามแผนและเงินสดลดลง",{m:-1500,knowledge:3}):q("ขอใช้เครื่องมือที่สถานฝึกจัดให้","คุณหาทางฝึกต่อโดยไม่จ่ายเกินเงินสด",{problem:3,security:2}),
+  q("พักแผนฝึกและสำรวจงานที่ทำได้ก่อน","คุณเลือกตั้งหลักโดยยังกลับมาฝึกได้ในอนาคต",{experience:3},{careerPlan:"",careerPhase:"",mode:"พักที่บ้าน",goal:"หางานใหม่"})
+ ];
+ return base;
+};
+M.story=(e,st)=>e.merge==="hobbyPractice"&&num(st,key(e,st))>0?"หลังเคยฝึก "+(st.hobby||"งานอดิเรก")+" มาระยะหนึ่ง คุณลองตั้งโจทย์เล็กที่ทำได้ในเวลาว่างและเลือกว่าอยากพัฒนาฝีมือหรือทำเพื่อความสุข":previous.mergedStory(e,st);
+// These options are authored per incident, not a generic automatic score multiplier.
+const annual={
+ "year_5_1":["problem",35,0,"สังเกตรูปร่างแล้วแยกตัวต่อที่เข้ากัน","คุณพบวิธีประกอบชิ้นส่วนโดยไม่ฝืน",{problem:4,creative:3}],
+ "year_8_1":["knowledge",25,0,"จัดดินสอเป็นกลุ่มเท่ากันแล้วคำนวณผลรวม","คุณแก้โจทย์ด้วยวิธีที่เร็วและอธิบายให้ครูฟังได้",{knowledge:4,problem:3}],
+ "year_13_1":["social",65,0,"ทำแบบสำรวจเวลาในแชตแล้วเสนอแผนที่ทุกคนเลือกได้","กลุ่มตกลงเวลาโดยไม่ต้องกดดันคนที่เลือกต่างกัน",{social:4,problem:3,friend:3}],
+ "year_14_0":["knowledge",55,0,"แยกโจทย์ที่พลาดเป็นประเภทแล้วฝึกเฉพาะจุด","คุณทบทวนได้ตรงจุดและยังมีเวลานอน",{knowledge:5,problem:4,energy:2}],
+ "year_16_0":["creative",50,2,"ทดลองสร้างเกมตัวอย่างจากไอเดียของตัวเอง","ผู้สอนเห็นวิธีคิดและให้คำแนะนำเฉพาะงาน",{creative:5,skill:3}],
+ "year_19_0":["problem",65,0,"อ่านกติกาและช่วยทีมจัดแผนเล่นหมากรอบแรก","คุณได้ใช้ไหวพริบและทำให้คนใหม่ร่วมเล่นได้ง่ายขึ้น",{problem:4,social:3,friend:2}],
+ "year_23_1":["knowledge",60,0,"ตรวจเงื่อนไขทดลองใช้และหาค่าใช้จ่ายแฝงจากเอกสาร","คุณเห็นภาระที่ซ่อนอยู่ก่อนผูกข้อมูลชำระเงิน",{knowledge:4,security:4}],
+ "year_29_1":["social",70,0,"อธิบายลำดับคิวอย่างชัดเจนโดยไม่ทำให้อีกฝ่ายเสียหน้า","คนขายและคนในคิวจัดลำดับใหม่อย่างสงบ",{fair:4,social:4,stress:-2}],
+ "year_30_0":["physical",80,2,"เลือกวิ่งตามความพร้อมและรักษาจังหวะที่ปลอดภัย","คุณได้ออกกำลังตามกำลังที่สะสมมา",{physical:5,h:3}],
+ "year_32_0":["skill",65,0,"ตรวจรายการซ่อมด้วยความรู้เรื่องชิ้นส่วนและถามจุดที่จำเป็น","คุณแยกงานซ่อมที่จำเป็นออกจากรายการที่ยังไม่ต้องทำ",{skill:4,problem:4,security:3}],
+ "year_39_1":["knowledge",70,0,"ตรวจแหล่งข่าวต้นฉบับและเทียบวันที่จากหลักฐานหลายแห่ง","คุณพบว่าข่าวถูกนำกลับมาเผยแพร่โดยขาดบริบท",{knowledge:4,i:3,problem:3}],
+ "year_43_0":["social",75,0,"สรุปข้อเสนอแต่ละฝ่ายและหาจุดที่ตกลงร่วมกันได้","วงประชุมลดการพูดแทรกและพิจารณาข้อเสนอจากข้อมูล",{fair:4,social:4,problem:3}],
+ "year_50_1":["physical",78,0,"ใช้เส้นทางเดินที่เหมาะกับกำลังและออกแรงตามความพร้อม","คุณรักษาความคล่องตัวโดยไม่ฝืนร่างกาย",{physical:4,energy:2}],
+ "year_53_1":["creative",70,2,"ออกแบบภาพจากแสงเงาที่สังเกตเองแล้วปรับองค์ประกอบ","คุณสร้างผลงานที่สะท้อนทักษะที่สะสมมา",{creative:5,skill:3}],
+ "year_56_0":["problem",70,0,"จัดตารางเอกสารและตรวจยอดที่ครบกำหนดอย่างเป็นระบบ","คุณพบรายการที่ต้องติดตามก่อนเกิดภาระ",{problem:4,security:4}],
+ "year_66_0":["knowledge",70,1,"ตรวจข้อเสนอผลตอบแทนกับข้อมูลผู้ให้บริการทางการและไม่โอนเงิน","คุณพบว่าเอกสารที่ผู้เสนอให้ยังยืนยันไม่ได้",{knowledge:4,security:5,i:2}],
+ "year_73_1":["problem",70,0,"ตรวจที่มาของข้อความจากช่องทางทางการและช่วยเตือนคนอื่น","คุณไม่เปิดเผยข้อมูลและช่วยให้ผู้พบข้อความระวังตัว",{security:5,problem:4,e:2}],
+ "year_84_0":["knowledge",70,0,"อ่านข้อกำหนดและจดข้อสงสัยเพื่อให้ผู้เชี่ยวชาญอิสระตรวจ","คุณรักษาสิทธิของตัวเองโดยไม่เซ็นเอกสารที่ไม่เข้าใจ",{security:5,knowledge:4,problem:3}],
+ "year_93_1":["creative",70,2,"สร้างภาพลายใบไม้จากรายละเอียดที่เห็นและเลือกสีตามจินตนาการ","คุณได้ผลงานเล็กที่สะท้อนฝีมือของตัวเอง",{creative:5,h:3}],
+ "year_99_1":["social",70,2,"ชวนคนที่สะดวกเลือกหนังหรือการ์ตูนคนละเรื่องแล้วคุยกัน","คุณได้แบ่งปันความสุขในวันนี้โดยไม่กดดันใคร",{h:5,r:4,social:2}]
+};
+F.specials=(e,st,s,base)=>{
+ const result=previous.specials(e,st,s,base),t=s.stats;
+ function add(stat,min,n,label,body,delta){
+  const b=base.find((x,i)=>(x.baseIndex??i)===n);
+  if(!b||t[stat]<min)return;
+  result.push({...b,baseIndex:n,special:true,label,result:body,delta:{...b.delta,...delta}});
+ }
+ const x=annual[e.id];if(x)add(...x);
+ if(e.cw==="adultx"&&e.ax==="task")add("skill",70,0,"ใช้ประสบการณ์ตรวจจุดผิดพลาดก่อนรับงาน","คุณตรวจข้อจำกัดก่อนเริ่มและลดงานที่ต้องแก้ภายหลัง",{skill:5,problem:4,reliable:4});
+ if(e.cw==="adultx"&&e.ax==="ethics")add("i",75,1,"บันทึกข้อเท็จจริงและแจ้งช่องทางที่รับผิดชอบโดยไม่เปิดเผยข้อมูลเกินจำเป็น","คุณรักษามาตรฐานและส่งข้อมูลให้ผู้เกี่ยวข้องตรวจสอบ",{i:5,fair:4,responsibility:4});
+ if(e.cw==="adultx"&&e.ax==="progress")add("confidence",72,0,"นำหลักฐานผลงานมาเจรจาค่าตอบแทนตามขอบเขต","ผู้เกี่ยวข้องเห็นผลงานและพิจารณาข้อตกลงที่ชัดเจน",{career:8,confidence:4,reliable:3});
+ if(e.cw==="crossx"&&e.crossx==="collision")add("problem",72,1,"จัดลำดับงานสำคัญและตกลงผู้ช่วยก่อนยืนยันเวลาไปหาลูก","คุณจัดการงานและรักษาคำพูดกับลูกตามข้อตกลง",{problem:5,child:5,reliable:3});
+ if(e.cw==="elderx"&&e.elderx==="estate")add("knowledge",70,0,"จัดรายการทรัพย์สินและแยกคำถามที่จะให้ผู้เชี่ยวชาญตรวจ","คุณบันทึกเจตนาของตัวเองโดยไม่ต้องโอนทรัพย์สินให้ใคร",{security:5,fair:4,problem:3});
+ if(e.cw==="elderx"&&e.elderx==="careplan"&&base[2])add("problem",70,2,"สำรวจจุดที่ทำกิจวัตรลำบากและจัดทางช่วยเฉพาะส่วน","คุณลดภาระตามความต้องการโดยไม่เสียความเป็นอิสระ",{problem:5,energy:4});
+ if(e.later==="scamold")add("knowledge",75,0,"ตรวจสอบผู้ติดต่อจากช่องทางทางการโดยไม่เปิดเผยข้อมูลส่วนตัว","คุณพบว่าข้อเสนอไม่มีข้อมูลยืนยันและไม่ส่งทรัพย์สิน",{security:5,problem:4});
+ return result;
+};
+w.LIFE_QUALITY={key,cap,annual};
+})(window);
