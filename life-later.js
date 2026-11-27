@@ -1683,7 +1683,7 @@ const partnerKey=st=>(st.partnerName||"single")+"@"+(st.partnerSince??-1);
 const childId=x=>x?x.name+"@"+x.born:"none";
 const adults=(st,a)=>st.children?.filter(x=>a-x.born>=20)||[];
 const chooseChild=(st,a,fn=()=>true)=>{const v=adults(st,a).filter(fn);return v.length?v[a%v.length]:null};
-const childSchool=(st,a)=>{const v=st.children?.filter(x=>a-x.born>=5&&a-x.born<=18)||[];return v.length?v[a%v.length]:null};
+const childSchool=(st,a)=>{const v=st.children?.filter(x=>a-x.born>=5&&a-x.born<=17)||[];return v.length?v[a%v.length]:null};
 const scope=(type,...v)=>[type,...v].join("|");
 const num=(st,k)=>st.qSeen?.[k]||0;
 const job=st=>W.by[st.profession]?.name||st.mode||"งาน";
@@ -1692,7 +1692,7 @@ function key(e,st){
  const a=e.age,j=jobKey(st),p=partnerKey(st);
  if(e.cw==="case")return scope("career-case",e.cwProfession);
  if(e.cw==="follow")return scope("career-follow",e.cwProfession,st.careerCaseAge);
- if(e.cw==="explore")return scope("career-explore",j);
+ if(e.cw==="explore")return scope("career-explore",j,st.qCareerRequest||0);
  if(e.cw==="home"||e.cw==="family")return scope("career-"+e.cw,p,st.qBalanceAge??st.careerCaseAge??st.detailAge??-1);
  if(e.cw==="friend")return scope("career-friend",j,st.qFriendAge??st.careerCaseAge??st.detailAge??-1);
  if(e.cw==="money")return scope("training-money",st.careerPlan,st.trainingAge);
@@ -1754,7 +1754,7 @@ function key(e,st){
  }
  if(e.merge){
   switch(e.merge){
-   case "hobbyMenu":return scope("hobby-menu",st.hobbyId||"none");
+   case "hobbyMenu":return scope("hobby-menu",st.hobbyId||"none",st.qHobbyRequest||0);
    case "hobbyPractice":return scope("hobby-practice",st.hobbyId,st.hobbyStart);
    case "hobbyTogether":return scope("hobby-together",st.hobbyId,p);
    case "hobbyCareer":return scope("hobby-career",st.hobbyId);
@@ -1763,7 +1763,7 @@ function key(e,st){
   }
  }
  if(e.flex==="reconsider")return scope("reconsider",st.pastRomance||"",st.partnerSince??-1,st.romanceOpen||"");
- if(e.flex==="marry")return scope("marry",p);
+ if(e.flex==="marry")return scope("marry",p,st.qMarriageRequest||0);
  if(e.polish==="family_decision")return scope("family-decision",p);
  return "";
 }
@@ -1783,6 +1783,9 @@ W.after=(st,old,e,n,ch,item)=>{
  if(k)st.qSeen={...(st.qSeen||{}),[k]:num(old,k)+1};
  if(st.careerBalance&&!old.careerBalance)st.qBalanceAge=item.age;
  if(st.careerFriend&&!old.careerFriend)st.qFriendAge=item.age;
+ if(e.cw==="adultx"&&e.ax==="pairfollow"&&n===2){st.axPair="";st.coupleLoop="ค้าง";}
+ if(e.cw==="adultx"&&e.ax==="childfollow"&&n===2)st.axChild="";
+ if(e.cw==="elderx"&&e.elderx==="childfollow"&&n===2)st.elChildIssue="";
 };
 const taskStories=[
  "ผู้เกี่ยวข้องส่งงานตัวอย่างมาให้ตรวจและแจ้งว่าต้องส่งตามเวลาที่ตกลงไว้ คุณพบว่าข้อมูลบางส่วนไม่ครบ ต้องตัดสินใจว่าจะขอข้อมูลหรือทำเท่าที่มี",
@@ -1860,7 +1863,7 @@ F.specials=(e,st,s,base)=>{
  const result=previous.specials(e,st,s,base),t=s.stats;
  function add(stat,min,n,label,body,delta){
   const b=base.find((x,i)=>(x.baseIndex??i)===n);
-  if(!b||t[stat]<min)return;
+  if(!b||!Number.isFinite(t[stat])||t[stat]<min)return;
   result.push({...b,baseIndex:n,special:true,label,result:body,delta:{...b.delta,...delta}});
  }
  const x=annual[e.id];if(x)add(...x);
@@ -1895,3 +1898,44 @@ const options=(st,s,age)=>(byAge.get(age)||[]).filter(e=>!Object.hasOwn(s.answer
 }).filter(e=>e.actions.length);
 w.LIFE_QUALITY={...Q,options,optionalIds:ids.slice()};
 })(window,["year_5_1","year_6_0","year_7_0","year_7_1","year_8_1","year_9_0","year_10_0","year_10_1","year_11_0","year_11_1","year_12_1","year_13_0","year_15_0","year_15_1","year_16_0","year_16_1","year_17_0","year_19_0","year_19_1","year_20_1","year_21_0","year_21_1","year_22_0","year_22_1","year_23_0","year_24_0","year_24_1","year_25_0","year_26_0","year_26_1","year_27_1","year_28_0","year_28_1","year_29_0","year_30_0","year_30_1","year_31_0","year_31_1","year_32_1","year_33_0","year_33_1","year_34_0","year_34_1","year_35_1","year_37_0","year_37_1","year_38_1","year_39_0","year_40_0","year_40_1","year_41_1","year_42_0","year_42_1","year_43_1","year_44_0","year_44_1","year_45_1","year_46_1","year_47_0","year_47_1","year_48_0","year_48_1","year_49_0","year_49_1","year_50_1","year_51_0","year_51_1","year_52_0","year_52_1","year_53_0","year_53_1","year_54_1","year_55_1","year_56_1","year_57_0","year_57_1","year_58_0","year_58_1","year_59_0","year_59_1","year_60_1","year_61_0","year_61_1","year_62_0","year_62_1","year_63_0","year_63_1","year_64_1","year_65_0","year_65_1","year_66_1","year_67_0","year_67_1","year_68_0","year_68_1","year_69_1","year_70_1","year_71_0","year_71_1","year_72_1","year_73_0","year_74_0","year_74_1","year_75_1","year_76_1","year_77_0","year_77_1","year_78_1","year_79_0","year_79_1","year_80_1","year_81_0","year_81_1","year_82_0","year_82_1","year_83_0","year_83_1","year_84_1","year_85_0","year_85_1","year_86_1","year_87_0","year_87_1","year_88_1","year_89_0","year_89_1","year_90_1","year_91_0","year_91_1","year_92_1","year_93_0","year_93_1","year_94_0","year_94_1","year_95_1","year_96_0","year_97_0","year_97_1","year_98_1","year_99_1"]);
+
+
+// Let players reopen legitimate life opportunities on their own terms, not by repeated compulsory prompts.
+(function(w){
+"use strict";
+const F=w.LIFE_FREEDOM,X=w.LIFE_FLEX,Q=w.LIFE_QUALITY,W=w.CAREER_WORLD;
+const before={activities:F.activities,replay:F.replay,choiceFor:X.choiceFor,test:X.test};
+F.activities=(st,s,age)=>{
+ const base=before.activities(st,s,age);
+ if(age<15||age>=100)return base;
+ const request=(kind,title,result)=>({key:"request_"+kind,title,result,delta:{},patch:{qualityRequest:kind}});
+ const a=[];
+ if(age>=18&&!st.careerPlan&&!st.careerMenu&&!["training","foundation"].includes(st.careerPhase)&&!["applying","gap","student"].includes(st.youthStatus))a.push(request("career","ขอสำรวจเส้นทางอาชีพใหม่","คุณเปิดโอกาสสำรวจอาชีพเมื่อมีรอบที่เหมาะสม ยังไม่ได้ลาออกหรือสมัครงานใหม่"));
+ if(!st.hobbyMenu)a.push(request("hobby","อยากลองงานอดิเรกใหม่","คุณเปิดโอกาสเลือกกิจกรรมใหม่ในรอบถัดไปโดยไม่ทิ้งความสนใจเดิมทันที"));
+ if(age>=20&&st.partnerName&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship)&&!st.married)a.push(request("marriage","อยากคุยกับคนรักเรื่องอนาคตร่วมกัน","คุณเปิดโอกาสพูดคุยเรื่องแต่งงานเมื่อทั้งคู่พร้อม ยังไม่มีการตกลงแต่งงาน"));
+ return [...base,...a.filter(x=>F.valid(st,s,age,x))];
+};
+F.replay=(st,item)=>{
+ before.replay(st,item);
+ const k=item.free?.patch?.qualityRequest;
+ if(k==="career")st.qCareerRequest=(st.qCareerRequest||0)+1;
+ if(k==="hobby")st.qHobbyRequest=(st.qHobbyRequest||0)+1;
+ if(k==="marriage")st.qMarriageRequest=(st.qMarriageRequest||0)+1;
+};
+X.test=(req,st,s,e)=>{
+ if(req==="@marriageReady"&&st.qMarriageRequest>0&&st.partnerName&&["คบกัน","อยู่ด้วยกัน"].includes(st.relationship)&&e.age>(st.partnerSince??e.age))return true;
+ return before.test(req,st,s,e);
+};
+X.choiceFor=(e,st)=>{
+ const b=before.choiceFor(e,st);
+ if(e.merge!=="hobbyPractice"||!(st.qSeen?.[Q.key(e,st)]>0))return b;
+ const h=st.hobby||"กิจกรรมที่ชอบ";
+ const texts=[
+ ["เลือกทำ "+h+" ช่วงสั้นๆ โดยไม่ตั้งเป้าผลงาน","คุณรักษาความสุขจากงานอดิเรกโดยไม่ฝืนเวลา"],
+ ["เลือกชิ้นงานหนึ่งที่ทำเสร็จได้และเก็บเป็นแฟ้มผลงาน","คุณสะสมหลักฐานการฝึกและเห็นความก้าวหน้าของตัวเอง"],
+ ["ชวนคนที่สนใจร่วมทำกิจกรรมแล้วแบ่งหน้าที่","คุณได้ฝึกผ่านการแลกเปลี่ยนกับคนอื่น"],
+ ["หยุดพักและเก็บอุปกรณ์ไว้จนกว่าจะอยากทำอีก","คุณรักษาพื้นที่สำหรับความสนใจอื่น"]
+ ];
+ return b.map((c,n)=>({...c,label:texts[n]?.[0]||c.label,result:texts[n]?.[1]||c.result}));
+};
+})(window);
