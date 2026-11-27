@@ -810,7 +810,7 @@ const NARRATIVE=(()=>{
 })();
 
 const LOW_STAKES_ANNUAL=new Set(["year_14_0","year_14_1","year_20_0","year_23_1","year_29_1","year_32_0","year_36_0","year_36_1","year_39_1","year_43_0","year_46_0","year_54_0","year_56_0","year_86_0","year_92_0"]);
- function allowed(e){if(e.age<5&&e.annual)return false;if(e.annual&&(LOW_STAKES_ANNUAL.has(e.id)||LOW_STAKES_ANNUAL.has(e.after)))return false;const state=lifeState();if(e.cw==="teen40")return TEEN40.gate(e,state,s);if(e.cw==="rel40")return REL40.gate(e,state,s);if(!SOCIAL_CONTEXT.gate(e,state,s)||!NARRATIVE.gate(e,state,s))return false;const flowGate=STORY_FLOW.overrideGate(e,state,s);if(!(flowGate===undefined?window.CAREER_WORLD.allowed(e,state,s):flowGate)||!window.LIFE_MERGED.allowed(e,state,s)||!SOCIAL_CONTEXT.peopleAllowed(e,state,s)||!window.LIFE_FREEDOM.gate(e,state)||!window.LIFE_POLISH.allowed(e,state,s)||!window.LIFE_LATER.allowed(e,state,s))return false;if(!window.LIFE_FLEX.allowed(e,state,s))return false;if(e.requirements&&!e.requirements.every(req=>{const v=window.LIFE_FLEX.test(req,state,s,e);return v===undefined?lifeRequirement(req,state):v}))return false;if(e.need&&!Object.entries(e.need).every(([k,v])=>state[k]===v))return false;if(e.city&&SOCIAL_CONTEXT.namedPlace(state,s)!==e.city)return false;if(e.id==="career_select"&&![0,1,2,3,4].includes(s.answers.route))return false;
+ function allowedRaw(e){if(e.age<5&&e.annual)return false;if(e.annual&&(LOW_STAKES_ANNUAL.has(e.id)||LOW_STAKES_ANNUAL.has(e.after)))return false;const state=lifeState();if(e.cw==="teen40")return TEEN40.gate(e,state,s);if(e.cw==="rel40")return REL40.gate(e,state,s);if(!SOCIAL_CONTEXT.gate(e,state,s)||!NARRATIVE.gate(e,state,s))return false;const flowGate=STORY_FLOW.overrideGate(e,state,s);if(!(flowGate===undefined?window.CAREER_WORLD.allowed(e,state,s):flowGate)||!window.LIFE_MERGED.allowed(e,state,s)||!SOCIAL_CONTEXT.peopleAllowed(e,state,s)||!window.LIFE_FREEDOM.gate(e,state)||!window.LIFE_POLISH.allowed(e,state,s)||!window.LIFE_LATER.allowed(e,state,s))return false;if(!window.LIFE_FLEX.allowed(e,state,s))return false;if(e.requirements&&!e.requirements.every(req=>{const v=window.LIFE_FLEX.test(req,state,s,e);return v===undefined?lifeRequirement(req,state):v}))return false;if(e.need&&!Object.entries(e.need).every(([k,v])=>state[k]===v))return false;if(e.city&&SOCIAL_CONTEXT.namedPlace(state,s)!==e.city)return false;if(e.id==="career_select"&&![0,1,2,3,4].includes(s.answers.route))return false;
 if(e.id==="crime_offer"&&![2,3].includes(s.answers.stayhome)&&s.stats.i>45&&s.stats.gambling<15&&s.stats.substance<10)return false;
 if(e.id==="date"&&["คบกัน","อยู่ด้วยกัน"].includes(state.relationship))return false;
 if(e.id==="dating"&&state.relationship==="แยกทาง")return false;if(["babycare","babyfight"].includes(e.id)&&!["คบกัน","อยู่ด้วยกัน"].includes(state.relationship))return false;if(e.id==="early_baby"&&(state.parent==="มีลูก"||state.familyPreference==="no"))return false;
@@ -821,6 +821,103 @@ if(["owner1","owner2"].includes(e.id)&&state.goal&&state.goal!=="เจ้าข
 if(["switch1","career_reset","office","raise","fired","bribe","employee","layoff","owner1","owner2","med2","nurse2","law1","law2","police1","police2","judge2","actor2","athlete2","promotion"].includes(e.id)&&["พึ่งครอบครัว","เกี่ยวข้องอาชญากรรม","ฟื้นตัว","ดูแลครอบครัว"].includes(state.mode))return false;
 if(["med2","nurse2","law2","police2","judge2","actor2","athlete2","teacher1","tech1","trade1","service1"].includes(e.id)&&state.mode==="ธุรกิจ")return false;
 if(["love_drama","love_drama2"].includes(e.id)&&["โสด","แยกทาง"].includes(state.relationship))return false;if(e.origin&&s.origin?.[e.origin[0]]!==e.origin[1])return false;if(e.after){const n=s.answers[e.after];if(!Number.isInteger(n)||(e.choiceGate&&!e.choiceGate.includes(n)))return false}return LIFE.eligible(e,s)}
+// Story pacing: choose a few meaningful NEW story roots, never cut a valid active consequence.
+const STORY_PACING_V1={
+ earlyQuiet:new Set(["firstword","toy","toy_a","toy_b","familykid_dad1","familykid_grandintro","familykid_grandvisit","familykid_grandmeal","familykid_mallinvite","familykid_mall","familykid_mallfollow","familykid_mom5","familykid_rules","familykid_dad6","familykid_holiday9","familykid_seaRecall","familykid_grandstory","familykid_grand10"]),
+ core:new Set(["birth","kindergarten","meet_mek","study_habit","teen_interest","route","career_select","legacy"]),
+ stageKeys:["tsStage","vyStage","womanStage","arcStage","ydStage","ylStage"],
+ ages:new Map()
+};
+for(const e of events){if(!STORY_PACING_V1.ages.has(e.age))STORY_PACING_V1.ages.set(e.age,[]);STORY_PACING_V1.ages.get(e.age).push(e);}
+const paceHistory=()=>s.history.filter(x=>!x.free);
+function paceCategory(e){
+ if(e.cw==="womanstory"||e.cw==="womanselect"||e.cw==="rel40"||e.cw==="teen40"||e.personIntro||e.personBoundary||/^(crush|date|teen_pim|teen_nara|teen_future)$/.test(e.id)||["reopen","court"].includes(e.flex))return "social";
+ if(["explore","case","rank","money","contextwork","workopportunity"].includes(e.cw)||/งาน|อาชีพ|ธุรกิจ|เงินเดือน/.test(e.title))return "work";
+ if(/ครอบครัว|พ่อแม่|คนรัก|ลูก|แต่งงาน/.test(e.title)||e.cw==="familykid"||e.cw==="adultfamily")return "family";
+ if(/สุขภาพ|รักษา|เจ็บป่วย|โรงพยาบาล/.test(e.title)||e.cw==="healthstory")return "health";
+ if(/โรงเรียน|สอบ|เรียน|ครู|ทุน|วิทยาศาสตร์/.test(e.title))return "study";
+ if(["teenstories","variedyouth","youthdistinct","younglife","child30","authored"].includes(e.cw))return "interest";
+ return "other";
+}
+function paceProtected(e){
+ if(STORY_PACING_V1.core.has(e.id)||e.age===100)return true;
+ if(e.after||e.flowDirect||STORY_PACING_V1.stageKeys.some(k=>Number.isInteger(e[k])&&e[k]>0))return true;
+ if(e.when&&Array.isArray(e.when)&&typeof e.when[0]==="string"&&!["route","teen_interest","career_select","study_habit"].includes(e.when[0])&&Object.hasOwn(s.answers,e.when[0]))return true;
+ if(e.cw==="teen40"&&e.teenKind==="consequence")return true;
+ if(["group","extraPage","extraGroups","pick","bridge","train","entry","follow","rank"].includes(e.cw))return true;
+ if(e.cw==="healthstory"||e.cw==="adultfamily"&&/birth|loss|crisis/.test(e.afType||""))return true;
+ if(["repair","recovery","marry"].includes(e.flex))return true;
+ if(/(?:career|family|health|crime|betray|audit|wedding|birth|loss|death|crisis|fired|promotion|layoff|graduat|study_plan|school_plan|education|teen_education|teen_track)/.test(e.id)&&!e.annual&&!["familykid","explore","case","contextwork"].includes(e.cw))return true;
+ return false;
+}
+function paceRepeat(e,st,h){
+ if(e.cw==="rel40"){
+  if(e.relKind==="meet"){
+   const last=h.findLast(x=>x.id.startsWith("rel40_meet_"));
+   const known=Object.values(st.people||{}).filter(p=>REL40.aff(p)>=50&&!["ไม่ติดต่อ","งานเท่านั้น","เว้นระยะ"].includes(p.boundary)).length;
+   if(last&&e.age-last.age<(known>=3?5:3))return false;
+  }else{
+   const name=REL40.info(e,st,s)?.name;if(!name)return false;
+   const old=h.filter(x=>x.id.startsWith("rel40_bond_")&&(x.careerSet?.relPerson===name||x.teenChoice?.name===name||x.title==="ช่วงเวลากับ "+name));
+   const dateOpportunity=REL40.possibleDate(st,name,e.age)&&!old.some(x=>/เดต|ความรู้สึก|เป็นแฟน/.test(x.label));
+   if(old.length>=2&&!(old.length===2&&dateOpportunity))return false;
+   if(old.length&&e.age-old.at(-1).age<5&&!dateOpportunity)return false;
+  }
+ }
+ if(e.cw==="explore"){
+  const previous=h.findLast(x=>x.id.startsWith("cw_explore_"));
+  if(previous&&e.age-previous.age<10)return false;
+  if(previous&&st.profession&&s.stats.career>=55&&s.stats.satisfaction>=45)return false;
+ }
+ if(e.flex==="reopen"){
+  const previous=h.findLast(x=>x.id.startsWith("flex_reopen_"));
+  if(previous&&e.age-previous.age<7)return false;
+ }
+ if(e.flex==="court"){
+  const previous=h.findLast(x=>x.id.startsWith("flex_court_"));
+  if(previous&&e.age-previous.age<4)return false;
+ }
+ return true;
+}
+function pacePriority(e,st){
+ let p=40;
+ if(e.cw==="teenstories"||e.cw==="child30"||e.cw==="variedyouth"||e.cw==="younglife"||e.cw==="authored")p+=24;
+ if(e.cw==="womanstory"||e.cw==="womanselect")p+=20;
+ if(e.cw==="teen40"&&e.teenKind==="romance")p+=30;
+ if(e.cw==="rel40")p-=20;
+ if(e.annual)p-=28;
+ if(e.freedom==="focus")p-=25;
+ if(e.flex==="reopen"||e.cw==="explore")p-=12;
+ if(/ทุน|แข่งขัน|สอบ|โครงการ|สำเร็จ|ธุรกิจ|ท้าทาย|โอกาส|ความฝัน|ความสัมพันธ์/.test(e.title))p+=10;
+ const cat=paceCategory(e),focus=st.yearFocus;
+ if(cat==="social"&&focus==="social"||cat==="study"&&focus==="study"||cat==="work"&&["work","money","career"].includes(focus)||cat==="family"&&focus==="family")p+=10;
+ let hash=(s.seed??1)^Math.imul(e.age+1,2654435761);for(const ch of e.id)hash=Math.imul(hash^ch.charCodeAt(0),16777619);return p+((hash>>>0)/4294967296)*12;
+}
+function allowed(e){
+ if(!allowedRaw(e))return false;
+ if(STORY_PACING_V1.earlyQuiet.has(e.id)||STORY_PACING_V1.earlyQuiet.has(e.after))return false;
+ if(e.age<5)return e.id==="birth"||e.id==="kindergarten"||paceProtected(e);
+ const st=lifeState(),h=paceHistory();
+ if(!paceRepeat(e,st,h))return false;
+ if(paceProtected(e))return true;
+ const age=e.age,year=h.filter(x=>x.age===age),budget=age<13?3:age<=18?4:age<=35?5:age<=59?4:age<=79?3:2;
+ const remaining=budget-year.length;if(remaining<=0)return false;
+ const seenCats=new Set(year.map(x=>eventById.get(x.id)).filter(Boolean).map(paceCategory)),cat=paceCategory(e);
+ // New independent social introductions compete for one slot, but active arcs are exempt above.
+ if(cat==="social"&&seenCats.has(cat)&&!(e.cw==="teen40"&&e.teenKind==="romance"))return false;
+ const score=x=>pacePriority(x,st)-(seenCats.has(paceCategory(x))?18:0);
+ const currentScore=score(e),pool=STORY_PACING_V1.ages.get(age)||[];
+ const index=pool.indexOf(e),betterCats=new Set();let better=0;
+ for(const x of pool.slice(index+1)){
+  if(paceProtected(x)||STORY_PACING_V1.earlyQuiet.has(x.id)||Object.hasOwn(s.answers,x.id))continue;
+  const k=paceCategory(x);if(k==="social"&&seenCats.has(k)&&!(x.cw==="teen40"&&x.teenKind==="romance"))continue;
+  if(score(x)<=currentScore||!allowedRaw(x)||!paceRepeat(x,st,h))continue;
+  // Reserve no more than one higher-priority new root per category.
+  if(!betterCats.has(k)){betterCats.add(k);better++;}
+  if(better>=remaining)return false;
+ }
+ return true;
+}
 const callbacks={child:[["glass",[1],"คุณนึกถึงวันที่เคยโทษเมฆเรื่องแก้วแตก และสิ่งที่เกิดตามมา"],["glass",[0,3],"คุณนึกถึงวันที่แม่เคยฟังคุณยอมรับว่าเป็นคนทำแก้วแตก"]],return:[["school_b",[2],"ฟ้าเคยรู้สึกกลัวคุณจากเหตุการณ์บ้านตัวต่อพังในวัยเด็ก"],["school_b",[0,1,3],"คุณยังจำบ้านตัวต่อที่เคยสร้างกับฟ้าในห้องอนุบาล"]],reunion:[["betray_a",[0,1,2,3],"เรื่องเงินธุรกิจที่เคยคุยกันยังเป็นส่วนหนึ่งของความทรงจำของทั้งคู่"]],pub:[["campus_a",[0,1,2,3],"คุณจำแพรได้จากกลุ่มเพื่อนมหาวิทยาลัย"]],family:[["love1",[1,3],"หลังจากความสัมพันธ์เดิมสิ้นสุดลง คุณกำลังทบทวนชีวิตในแบบที่ต้องการ"]]};
 function storyFor(e){if(e.cw==="teen40")return TEEN40.story(e,lifeState(),s);if(e.cw==="rel40")return REL40.story(e,lifeState(),s);const socialStory=SOCIAL_CONTEXT.story(e,lifeState(),s);if(socialStory!==undefined)return socialStory;if(e.cw==='contextwork')return SOCIAL_CONTEXT.workStory(e,lifeState());if(e.cw==='child30')return SOCIAL_CONTEXT.schoolText(e,lifeState(),window.CHILDHOOD30.story(e,lifeState(),s));const state=lifeState(),flowStory=STORY_FLOW.story(e,state,s),revised=NARRATIVE.story(e,state,s);const lead=[];if(e.id==="family"&&lifeState().parent==="มีลูก")lead.push("คุณมีลูกแล้ว และกำลังทบทวนว่าจะจัดชีวิตครอบครัวในช่วงต่อไปอย่างไร");if(e.id==="study_report"){const level=s.stats.knowledge>=18&&s.stats.discipline>=53?"ผลการเรียนโดดเด่นและมีความสม่ำเสมอ":s.stats.knowledge>=10&&s.stats.discipline>=45?"ผลการเรียนอยู่ในระดับที่ค่อยๆ พัฒนา":"ยังมีพื้นฐานและงานที่ต้องฝึกเพิ่ม";lead.push(level)}if(e.id==="early_love"&&lifeState().adultInterest)lead.push("คุณกำลังทำความรู้จักกับ "+lifeState().adultInterest);if(e.id==="birth"&&s.origin){lead.push("เรื่องราวของ "+s.origin.name+" เริ่มต้นขึ้นแล้ว"+(s.origin.province?" ณ "+s.origin.province:""));for(const [k,choices] of Object.entries(originSets))lead.push(choices[s.origin[k]].story)}const variant=e.after&&(e.annual?s.history.findLast(x=>x.id===e.after)?.result||e.variants?.[s.answers[e.after]]:e.variants?.[s.answers[e.after]]);if(variant)lead.push(variant);for(const [id,choices,txt] of [...(e.cross||[]),...(e.id==="child"&&revised!==undefined?[]:callbacks[e.id]||[])])if(choices.includes(s.answers[id]))lead.push(txt);return [...(e.age<=10&&(revised!==undefined||flowStory!==undefined)?[]:lead),flowStory??revised??(e.later?window.LIFE_LATER.story(e,lifeState(),s):e.merge?window.LIFE_MERGED.story(e,lifeState()):e.cw==="impact"&&window.LIFE_IMPACT?window.LIFE_IMPACT.story(e,lifeState(),s):e.cw==="workopportunity"&&window.WORK_OPPORTUNITY?window.WORK_OPPORTUNITY.story(e,lifeState(),s):e.cw?window.CAREER_WORLD.story(e,lifeState()):e.flex?window.LIFE_FLEX.replace(e.story,lifeState(),e.age):e.id==="child"?e.story.replace("ลูกวัยห้าขวบ","ลูก"):window.PEOPLE.story(e,lifeState()))].join("\n\n")}
 function payYear(age){if(s.paidAge>=age)return;s.paidAge=age;const st=lifeState(),base=window.LIFE_FREEDOM.annual(st,s.stats,age)||{gross:0,expense:0,net:0},pay=age>=18&&s.origin&&window.LIFE_IMPACT?window.LIFE_IMPACT.annual(st,s,age,base):base,extra=window.LIFE_LATER.annual(st,age),interest=pay.interest||0;if(!pay.gross&&!extra.business&&!extra.care&&!extra.children&&!interest)return;const net=pay.net+extra.net,changes=LIFE.apply(s.stats,{m:net,savings:interest});s.history.push({id:"income_"+age,age,title:"รายรับและค่าใช้จ่ายประจำปี",label:"รายได้งาน "+money(pay.gross)+" · ผลกิจการ "+money(extra.business)+" · ค่าใช้จ่าย "+money(pay.expense+extra.care+extra.children)+(interest?" · ผลตอบแทนเงินออม "+money(interest):""),result:"เงินคงเหลือเปลี่ยนสุทธิ "+money(net)+(interest?" และเงินออมเพิ่ม "+money(interest):""),changes,free:{kind:"income"}});}
