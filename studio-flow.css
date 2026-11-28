@@ -32,3 +32,5 @@
  #inspect .float-head button{min-width:40px;min-height:40px}
  #viewport{min-height:48dvh}
 }
+
+.flow-edge-handle{position:absolute;z-index:25;width:32px;height:28px;padding:0;border-radius:50%;border:2px solid #9fd7ff;background:#254966;color:white;touch-action:none;cursor:grab;font-size:15px;line-height:24px;box-shadow:0 2px 6px #0008}.flow-edge-handle.fail{border-color:#efb4a0;background:#623f39}.flow-edge-handle:active{cursor:grabbing}@media(pointer:coarse){.flow-edge-handle{width:44px;height:44px;transform:translate(-6px,-8px);line-height:38px}}
