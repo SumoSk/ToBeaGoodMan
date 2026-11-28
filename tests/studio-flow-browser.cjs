@@ -22,8 +22,13 @@ const makeGraph=(name,delta)=>({schema:1,title:name,play:{entry:"q",variables:[]
 for(const [name,delta,expected,target] of [["ทดลอง A",15,55,"ผ่าน"],["ทดลอง B",-10,45,"ไม่ผ่าน"]]){
  await page.locator('[data-tab="STORY"]').click();
  await page.locator("#flow-new").click();
- await page.locator("#file").setInputFiles({name:"trial.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(makeGraph(name,delta)))});
+ await page.locator("#file").setInputFiles({name:"trial.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(makeGraph(name,0)))});
  await page.locator(".flow-node[data-node-id=q]").waitFor();
+ await page.locator('.flow-node[data-node-id="q"] .flow-node-head').click();
+ const signed=page.getByLabel("คะแนนที่เพิ่ม/ลด (+ หรือ -)",{exact:true});
+ await signed.fill(delta>0?"+"+delta:String(delta));
+ await signed.press("Enter");
+ assert.equal(await page.evaluate(()=>globalThis.StudioFlowAPI.get().nodes.find(n=>n.id==="q").play.choices[0].effects[0].value),delta);
  await page.locator('[data-tab="TEST PLAY"]').click();
  await page.getByRole("button",{name:"เริ่มทดลองเล่น",exact:true}).click();
  await page.getByRole("button",{name:"ตอบ",exact:true}).click();
