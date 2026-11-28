@@ -78,3 +78,12 @@
 .flow-node .flow-answer:hover,.flow-node .flow-answer-toggle:hover{background:#38526a;border-color:#8ab3d3}
 .flow-node.flow-idea{background:linear-gradient(145deg,#353448,#252a3b)}
 @media(pointer:coarse){.flow-node .flow-answer-toggle{height:46px;min-height:46px;font-size:14px}.flow-node .flow-port-row{height:80px}.flow-node .flow-answer{height:72px;min-height:72px;font-size:15px;line-height:20px}.flow-node .flow-answer-label{line-height:20px}.flow-node .flow-pin{flex-basis:44px;width:44px;height:44px;min-height:44px;line-height:40px}.flow-node .flow-bundle-port{top:calc(12px + 90px + 23px - 7px)}}
+
+/* Keep the spacious cards, with smaller typography on all pointer types. */
+.flow-node .flow-node-head strong{font-size:15px;line-height:19px;font-weight:650}
+.flow-node .flow-node-head small{font-size:11px;line-height:16px}
+.flow-node .flow-answer-toggle{font-size:12px}
+.flow-node .flow-answer{font-size:12px;line-height:17px}
+.flow-node .flow-answer-label{line-height:17px}
+.flow-node .flow-answer-letter{font-size:11px}
+@media(pointer:coarse){.flow-node .flow-answer-toggle{font-size:12px}.flow-node .flow-answer{font-size:13px;line-height:18px}.flow-node .flow-answer-label{line-height:18px}}
