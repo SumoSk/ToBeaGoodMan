@@ -2,3 +2,33 @@
 .flow-preview-pin{position:absolute;right:7px;top:7px;padding:3px 7px;font-size:12px;color:#9bdfbb;background:#233b36;z-index:1}.flow-node-head{padding-right:33px}.flow-preview-dialog{width:min(420px,calc(100vw - 24px));max-height:90dvh;overflow:auto;background:#141e29;color:#edf1f6;border:1px solid #526b82;border-radius:14px;padding:12px;box-shadow:0 16px 60px #0008}.flow-preview-dialog::backdrop{background:#0008}.flow-preview-bar{justify-content:space-between}.flow-preview-bar strong{font-size:13px;flex:1}.flow-preview-setup{margin:8px 0;font-size:12px;color:#b8cada}.flow-preview-setup summary{cursor:pointer}.flow-mini-game{padding:12px;margin:6px 0}.flow-mini-game h2{font-size:17px}.flow-mini-game .flow-play-answer{font-size:13px;padding:9px}.flow-invalid-answer{border-color:#ef6666!important}.flow-preview-body{min-width:0}
 
 .flow-preview-pin{right:5px;top:5px;font-size:11px;padding:4px 7px;white-space:nowrap;min-height:26px}.flow-node-head{padding-right:76px}.flow-toolbar-preview{background:#214f40!important;color:#c9ffe0!important;border-color:#57a67d!important;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.flow-node-head strong{font-size:13px}
+
+#touch-tools{display:none}
+@media(pointer:coarse){
+ .flow-port-row{height:50px}
+ .flow-pin{flex-basis:44px;height:44px}
+ .flow-answer,.flow-preview-pin,.flow-play-answer,.flow-panel button,.flow-preview-dialog button{min-height:44px}
+ .flow-field :is(input,select,textarea),#inspect :is(input,select,textarea){font-size:16px}
+ .flow-preview-dialog{box-sizing:border-box;max-height:85dvh;overscroll-behavior:contain}
+ .flow-preview-dialog button{margin:3px}
+}
+@media(pointer:coarse) and (max-width:1370px){
+ .ls-design-nav:not(:has(details[open])),.workspace-tabs{flex-wrap:nowrap;overflow-x:auto;min-width:0}
+ .workspace-tabs .customtabs{flex-wrap:nowrap}
+ .workspace-tabs button,.ls-design-nav button{flex:0 0 auto;white-space:nowrap;min-height:44px}
+ .workspace-tabs #workspacename{display:none}
+ .main-tools #touch-tools{display:inline-block;order:1}
+ .main-tools:not(.touch-expanded)>:not(#touch-tools):not(.tool-group:first-of-type),
+ .main-tools:not(.touch-expanded)>.tool-group:first-of-type>:not(#add):not(#flow-preview):not(#flow-sample){display:none}
+ .main-tools,.main-tools>.tool-group{flex-wrap:wrap}
+ .main-tools button,.app-top summary,.main-tools summary{min-height:42px}
+ .main-tools .flow-toolbar-preview{max-width:36vw}
+ .workspace .map-pane{min-width:0}
+ #minimap svg{max-width:78px;height:auto}
+}
+@media(pointer:coarse) and (max-width:650px){
+ #inspect.floating-panel:not([hidden]){position:fixed!important;inset:auto 0 0!important;box-sizing:border-box;width:100%!important;max-width:none;height:auto!important;max-height:49dvh!important;border-radius:14px 14px 0 0;padding-bottom:max(9px,env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain}
+ #inspect.floating-panel .float-head{cursor:default}
+ #inspect .float-head button{min-width:40px;min-height:40px}
+ #viewport{min-height:48dvh}
+}
