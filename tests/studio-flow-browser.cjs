@@ -13,12 +13,8 @@ await editor.getByLabel("ค่า",{exact:true}).fill("40");
 await editor.getByRole("button",{name:"บันทึกถัง",exact:true}).click();
 assert.match(await page.locator("#ls-design-panel").innerText(),/ความสนิทกลาง/);
 await page.locator('[data-tab="ENGINE"]').click();
-const sharedRow=page.locator(".flow-row").filter({hasText:"ความสนิทกลาง"});
-await sharedRow.getByRole("button",{name:"กำหนดเกณฑ์",exact:true}).click();
-await editor.getByLabel("เงื่อนไข",{exact:true}).selectOption("gte");
-await editor.getByLabel("ค่า",{exact:true}).fill("50");
-await editor.getByRole("button",{name:"บันทึกเกณฑ์",exact:true}).click();
-const makeGraph=(name,delta)=>({schema:1,title:name,play:{entry:"q",variables:[]},nodes:[{id:"q",title:"คำถาม",type:"decision",x:30,y:30,play:{kind:"question",text:"ทดลอง",end:false,choices:[{id:"answer",label:"ตอบ",effects:[{variable:"shared_trust",op:"add",value:delta}]}]}},{id:"ok",title:"ผ่าน",type:"end",x:400,y:30,play:{kind:"question",end:true,choices:[]}},{id:"no",title:"ไม่ผ่าน",type:"end",x:400,y:250,play:{kind:"question",end:true,choices:[]}}],edges:[{id:"e",from:"q",to:"ok",type:"next",play:{choice:"answer",mode:"all",conditions:[{gate:"shared_trust"}],fail:{kind:"node",to:"no"}}}]});
+await page.getByRole("button",{name:"+ สร้างกลไก",exact:true}).click();await editor.getByLabel("ชื่อกลไก",{exact:true}).fill("สนิทพอ");await editor.getByRole("button",{name:"+ เงื่อนไข",exact:true}).click();await editor.getByLabel("ถังข้อมูล",{exact:true}).selectOption("shared_trust");await editor.getByLabel("คำสั่ง",{exact:true}).selectOption("gte");await editor.getByLabel("ค่า",{exact:true}).fill("50");await editor.getByRole("button",{name:"บันทึกกลไก",exact:true}).click();const mech=await page.evaluate(()=>globalThis.StudioDesign.database().mechanisms.find(m=>m.name==="สนิทพอ").id);
+const makeGraph=(name,delta)=>({schema:1,title:name,play:{entry:"q",variables:[]},nodes:[{id:"q",title:"คำถาม",type:"decision",x:30,y:30,play:{kind:"question",text:"ทดลอง",end:false,choices:[{id:"answer",label:"ตอบ",effects:[{variable:"shared_trust",op:"add",value:delta}]}]}},{id:"ok",title:"ผ่าน",type:"end",x:400,y:30,play:{kind:"question",end:true,choices:[]}},{id:"no",title:"ไม่ผ่าน",type:"end",x:400,y:250,play:{kind:"question",end:true,choices:[]}}],edges:[{id:"e",from:"q",to:"ok",type:"next",play:{choice:"answer",mode:"all",conditions:[{mechanism:mech}],fail:{kind:"node",to:"no"}}}]});
 for(const [name,delta,expected,target] of [["ทดลอง A",15,55,"ผ่าน"],["ทดลอง B",-10,45,"ไม่ผ่าน"]]){
  await page.locator('[data-tab="STORY"]').click();
  await page.locator("#flow-new").click();
