@@ -5,7 +5,7 @@ await page.goto("http://127.0.0.1:8765/story-map.html");await page.waitForFuncti
 await page.locator('[data-tab="STORY"]').click();await page.getByRole("button",{name:"ลองเล่น ทำงาน",exact:true}).click();const mini=page.locator(".flow-preview-dialog");await mini.waitFor();assert.match(await mini.locator(".flow-game h2").innerText(),/ทำงาน/);await mini.getByRole("button",{name:"ดำเนินชีวิตต่อ",exact:true}).click();assert.match(await mini.locator(".flow-game").innerText(),/เงิน: 10000/);assert.match(await mini.locator(".flow-game").innerText(),/จบเกม/);await mini.getByRole("button",{name:"ปิด",exact:true}).click();await page.locator('.flow-node[data-node-id="birth"] .flow-node-head').click();await page.getByRole("button",{name:"แก้เส้นเชื่อม → ทำงาน",exact:true}).click();await page.locator("#inspect label").filter({hasText:"กรณีไม่ผ่าน"}).locator("select").selectOption("");await page.locator('[data-tab="TEST PLAY"]').click();assert.match(await page.locator("#ls-design-panel").innerText(),/ยังไม่ได้กำหนดกรณีไม่ผ่าน/);
 await page.locator('[data-tab="STORY"]').click();await page.locator("#flow-preview").click();await page.locator(".flow-preview-dialog").getByRole("button",{name:"▶ ทำงาน",exact:true}).click();await mini.getByRole("button",{name:"ดำเนินชีวิตต่อ",exact:true}).click();assert.match(await mini.locator(".flow-game").innerText(),/จบเกม/);await mini.getByRole("button",{name:"ปิด",exact:true}).click();await page.reload();await page.waitForFunction(()=>!document.documentElement.hasAttribute("data-studio-lock"));await page.getByRole("button",{name:"เกิด → ทำงาน → ตาย",exact:true}).first().click();await page.locator('[data-tab="TEST PLAY"]').click();assert.match(await page.locator("#ls-design-panel").innerText(),/ยังไม่ได้กำหนดกรณีไม่ผ่าน/);
 await page.locator('[data-tab="DATABASE"]').click();
-await page.getByRole("button",{name:"+ สร้างถังข้อมูล",exact:true}).click();
+await page.getByRole("button",{name:"ดูส่วนกลาง",exact:true}).click();await page.getByRole("button",{name:"+ สร้างถังข้อมูล",exact:true}).click();
 const editor=page.locator(".flow-editor");
 await editor.getByLabel("รหัสถาวร (อังกฤษ/ตัวเลข/_/-)",{exact:true}).fill("shared_trust");
 await editor.getByLabel("ชื่อถัง",{exact:true}).fill("ความสนิทกลาง");
@@ -13,7 +13,7 @@ await editor.getByLabel("ค่า",{exact:true}).fill("40");
 await editor.getByRole("button",{name:"บันทึกถัง",exact:true}).click();
 assert.match(await page.locator("#ls-design-panel").innerText(),/ความสนิทกลาง/);
 await page.locator('[data-tab="ENGINE"]').click();
-await page.getByRole("button",{name:"+ สร้างกลไก",exact:true}).click();await editor.getByLabel("ชื่อกลไก",{exact:true}).fill("สนิทพอ");await editor.getByRole("button",{name:"+ เงื่อนไข",exact:true}).click();await editor.getByLabel("ถังข้อมูล",{exact:true}).selectOption("shared_trust");await editor.getByLabel("คำสั่ง",{exact:true}).selectOption("gte");await editor.getByLabel("ค่า",{exact:true}).fill("50");await editor.getByRole("button",{name:"บันทึกกลไก",exact:true}).click();const mech=await page.evaluate(()=>globalThis.StudioDesign.database().mechanisms.find(m=>m.name==="สนิทพอ").id);
+await page.getByRole("button",{name:"+ สร้างกลไก",exact:true}).click();await editor.getByLabel("ชื่อกลไก",{exact:true}).fill("สนิทพอ");await editor.getByRole("button",{name:"+ เงื่อนไข",exact:true}).click();await editor.getByLabel("ถังข้อมูล",{exact:true}).selectOption("shared_trust");await editor.getByLabel("คำสั่ง",{exact:true}).selectOption("gte");await editor.getByLabel("ค่า",{exact:true}).fill("50");await editor.getByLabel("ค่า",{exact:true}).press("Tab");await editor.getByRole("button",{name:"บันทึกกลไก",exact:true}).click();const mech=await page.evaluate(()=>globalThis.StudioDesign.database().mechanisms.find(m=>m.name==="สนิทพอ").id);
 const makeGraph=(name,delta)=>({schema:1,title:name,play:{entry:"q",variables:[]},nodes:[{id:"q",title:"คำถาม",type:"decision",x:30,y:30,play:{kind:"question",text:"ทดลอง",end:false,choices:[{id:"answer",label:"ตอบ",effects:[{variable:"shared_trust",op:"add",value:delta}]}]}},{id:"ok",title:"ผ่าน",type:"end",x:400,y:30,play:{kind:"question",end:true,choices:[]}},{id:"no",title:"ไม่ผ่าน",type:"end",x:400,y:250,play:{kind:"question",end:true,choices:[]}}],edges:[{id:"e",from:"q",to:"ok",type:"next",play:{choice:"answer",mode:"all",conditions:[{mechanism:mech}],fail:{kind:"node",to:"no"}}}]});
 for(const [name,delta,expected,target] of [["ทดลอง A",15,55,"ผ่าน"],["ทดลอง B",-10,45,"ไม่ผ่าน"]]){
  await page.locator('[data-tab="STORY"]').click();
@@ -32,7 +32,7 @@ for(const [name,delta,expected,target] of [["ทดลอง A",15,55,"ผ่า
  assert.equal(await page.locator(".flow-game h2").innerText(),target);
 }
 await page.reload();await page.waitForFunction(()=>!document.documentElement.hasAttribute("data-studio-lock"));
-await page.locator('[data-tab="DATABASE"]').click();
+await page.locator('[data-tab="DATABASE"]').click();await page.getByRole("button",{name:"ดูส่วนกลาง",exact:true}).click();
 assert.match(await page.locator("#ls-design-panel").innerText(),/ค่ารอบทดลอง 45/);
 assert.match(await page.locator("#ls-design-panel").innerText(),/ความสนิทกลาง/);
 console.log("Browser: shared database creation, central gate, cross-map accumulated score and reload passed");
